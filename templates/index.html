@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    ⚙️
+                </div>
+                <h4>Train Empty Page Model</h4>
+                <p>Train the empty page detection model.</p>
+                <a href="{{ url_for('train_page') }}" class="btn btn-primary">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    🔍
+                </div>
+                <h4>Detect Empty Page</h4>
+                <p>Detect if a page is empty or filled.</p>
+                <a href="{{ url_for('detect_empty_page') }}" class="btn btn-success">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    📄
+                </div>
+                <h4>OCR TIF Image</h4>
+                <p>Run OCR on a TIF image.</p>
+                <a href="{{ url_for('ocr_page') }}" class="btn btn-warning text-white">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    🧩
+                </div>
+                <h4>OCR TIF Image (With Details)</h4>
+                <p>Run OCR on a TIF image with extra parameters.</p>
+                <a href="{{ url_for('ocr_tif_image_with_details_page') }}" class="btn btn-warning text-white">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    📋
+                </div>
+                <h4>Classifications</h4>
+                <p>List and manage classification types.</p>
+                <a href="{{ url_for('classifications_page') }}" class="btn btn-info text-white">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    🧪
+                </div>
+                <h4>Train Classification</h4>
+                <p>Train classification with OCR data samples.</p>
+                <a href="{{ url_for('train_classification_page') }}" class="btn btn-secondary text-white">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    🧾
+                </div>
+                <h4>Get Classification</h4>
+                <p>Get classification for OCR content.</p>
+                <a href="{{ url_for('get_classification_page') }}" class="btn btn-dark text-white">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    ✅
+                </div>
+                <h4>Check Data Exists</h4>
+                <p>Check if given values exist in OCR result.</p>
+                <a href="{{ url_for('check_data_exists_page') }}" class="btn btn-success">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    🤖
+                </div>
+                <h4>BERT Classification Train</h4>
+                <p>Train BERT document classification model.</p>
+                <a href="{{ url_for('bert_classification_train_page') }}" class="btn btn-success">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    🔍
+                </div>
+                <h4>BERT Classification Detect</h4>
+                <p>Detect document classification using BERT.</p>
+                <a href="{{ url_for('bert_classification_detect_page') }}" class="btn btn-success">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    🎤
+                </div>
+                <h4>Audio Transcription</h4>
+                <p>Transcribe speech from a WAV audio file.</p>
+                <a href="{{ url_for('audio_transcription_page') }}" class="btn btn-success">Go</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    🦙
+                </div>
+                <h4>LLaMA Question Answer</h4>
+                <p>Ask a question about the given content using LLaMA.</p>
+                <a href="{{ url_for('llama_question_answer_page') }}" class="btn btn-success">Go</a>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+{% endblock %}

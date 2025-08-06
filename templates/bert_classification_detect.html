@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}BERT Classification Detect{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">BERT Classification Detect</div>
+    <div class="card-body">
+
+        <form id="bertDetectForm">
+            <div class="mb-3">
+                <label class="form-label">OCR Content (JSON)</label>
+                <textarea class="form-control" id="detectContent" rows="5" placeholder='Paste OCR JSON here'></textarea>
+                <button type="button" class="btn btn-sm btn-secondary mt-2" id="loadDetectSampleBtn">Load Example</button>
+            </div>
+            <button type="submit" class="btn btn-primary">Detect</button>
+        </form>
+
+        <div id="detectResultMsg" class="mt-3"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("loadDetectSampleBtn").addEventListener("click", () => {
+    document.getElementById("detectContent").value = JSON.stringify({
+        "content": "ocr sonucu"
+    }, null, 2);
+});
+
+document.getElementById("bertDetectForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const contentRaw = document.getElementById("detectContent").value.trim();
+    if (!contentRaw) {
+        document.getElementById("detectResultMsg").innerHTML =
+            `<div class="alert alert-danger">Content is required</div>`;
+        return;
+    }
+
+    let payload;
+    try {
+        payload = JSON.parse(contentRaw);
+    } catch (err) {
+        document.getElementById("detectResultMsg").innerHTML =
+            `<div class="alert alert-danger">Invalid JSON format</div>`;
+        return;
+    }
+
+    showLoader();
+
+    fetch("/api/getbertclassification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        hideLoader();
+        if (data.Success) {
+            document.getElementById("detectResultMsg").innerHTML =
+                `<div class="alert alert-success"><pre>${JSON.stringify(data.Data, null, 2)}</pre></div>`;
+        } else {
+            document.getElementById("detectResultMsg").innerHTML =
+                `<div class="alert alert-danger">${data.Description || "Error"}</div>`;
+        }
+    })
+    .catch(err => {
+        hideLoader();
+        document.getElementById("detectResultMsg").innerHTML =
+            `<div class="alert alert-danger">Request failed</div>`;
+        console.error(err);
+    });
+});
+</script>
+{% endblock %}

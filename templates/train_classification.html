@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Train Classification{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">Train Classification</div>
+    <div class="card-body">
+        <form id="trainForm">
+            <div class="mb-3">
+                <label class="form-label">Classification Name</label>
+                <input type="text" class="form-control" id="classificationName" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Sample Datas (JSON)</label>
+                <textarea class="form-control" id="sampleData" rows="10" placeholder='[{"docContent":"doc data"}]' required></textarea>
+                <button type="button" class="btn btn-sm btn-secondary mt-2" id="loadSampleBtn">Load Example JSON</button>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="submitBtn">Start Training</button>
+        </form>
+
+        <div id="resultMsg" class="mt-3"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const form = document.getElementById("trainForm");
+const classificationNameEl = document.getElementById("classificationName");
+const sampleDataEl = document.getElementById("sampleData");
+const submitBtn = document.getElementById("submitBtn");
+const loadSampleBtn = document.getElementById("loadSampleBtn");
+
+loadSampleBtn.addEventListener("click", () => {
+    sampleDataEl.value = JSON.stringify([
+        { "docContent": "Example OCR result 1" },
+        { "docContent": "Example OCR result 2" }
+    ], null, 2);
+});
+
+form.addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const classificationName = classificationNameEl.value.trim();
+    const sampleDataRaw = sampleDataEl.value.trim();
+
+    let sampleData;
+    try {
+        sampleData = JSON.parse(sampleDataRaw);
+    } catch (err) {
+        document.getElementById("resultMsg").innerHTML =
+            `<div class="alert alert-danger">Sample Data is not valid JSON</div>`;
+        return;
+    }
+
+    const payload = {
+        classificationName: classificationName,
+        sampleDatas: sampleData
+    };
+
+    showLoader();
+    classificationNameEl.disabled = true;
+    sampleDataEl.disabled = true;
+    submitBtn.disabled = true;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15 * 60 * 1000);  // 10 dakika timeout
+
+    fetch("/api/starttrain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+    })
+    .then(res => res.json())
+    .then(data => {
+        hideLoader();
+        clearTimeout(timeout);
+
+        classificationNameEl.disabled = false;
+        sampleDataEl.disabled = false;
+        submitBtn.disabled = false;
+
+        if (data.Success) {
+            document.getElementById("resultMsg").innerHTML =
+                `<div class="alert alert-success">${data.Data}</div>`;
+            form.reset();
+            sampleDataEl.value = "";
+        } else {
+            document.getElementById("resultMsg").innerHTML =
+                `<div class="alert alert-danger">${data.Data}</div>`;
+        }
+    })
+    .catch(err => {
+        hideLoader();
+        clearTimeout(timeout);
+
+        classificationNameEl.disabled = false;
+        sampleDataEl.disabled = false;
+        submitBtn.disabled = false;
+
+        document.getElementById("resultMsg").innerHTML =
+            `<div class="alert alert-danger">Request failed or timed out</div>`;
+        console.error(err);
+    });
+});
+</script>
+{% endblock %}

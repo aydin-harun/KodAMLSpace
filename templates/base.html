@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{% endblock %} - Empty Page Detector</title>
+<link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/dataTables.bootstrap5.min.css') }}" rel="stylesheet"/>
+<script src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dataTables.bootstrap5.min.js') }}"></script>
+
+<style>
+body {
+    overflow-x: hidden;
+}
+.sidebar {
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    background-color: #198754;
+    padding-top: 20px;
+    transition: all 0.3s;
+    z-index: 1030;
+}
+.sidebar.collapsed {
+    left: -250px;
+}
+.sidebar-toggle {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1040;
+}
+.sidebar a {
+    color: white;
+    display: block;
+    padding: 10px 20px;
+    text-decoration: none;
+}
+.sidebar a.active, .sidebar a:hover {
+    background-color: #146c43;
+}
+.main-content {
+    margin-left: 260px;
+    padding: 20px;
+    transition: margin-left 0.3s;
+}
+.main-content.full {
+    margin-left: 10px;
+}
+.loader {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+}
+.accordion-button:not(.collapsed) {
+    color: #fff;
+    background-color: #157347; /* yeşil ton */
+    box-shadow: inset 0 calc(-1 * var(--bs-accordion-border-width)) 0 rgba(0,0,0,.125);
+    transform: none;
+}
+</style>
+</head>
+<body class="bg-light">
+
+<button class="btn btn-sm btn-success sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
+<div class="sidebar" id="sidebar">
+    <h4 class="text-center text-white">KodA AI</h4>
+
+    <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">
+        🏠 Home
+    </a>
+
+    <hr class="bg-light my-2">
+
+    <div class="accordion accordion-flush" id="sidebarAccordion">
+
+        <!-- Empty Page Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path not in ['/trainemptymodel', '/detectemptypage'] %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#modelOps"
+                    aria-expanded="{% if request.path in ['/trainemptymodel', '/detectemptypage'] %}true{% else %}false{% endif %}">
+                    ⚙️ Empty Page Operations
+                </button>
+            </h2>
+            <div
+                id="modelOps"
+                class="accordion-collapse collapse {% if request.path in ['/trainemptymodel', '/detectemptypage'] %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('train_page') }}" class="{% if request.path == '/trainemptymodel' %}active{% endif %}">⚙️ Train Empty Page Model</a>
+                    <a href="{{ url_for('detect_empty_page') }}" class="{% if request.path == '/detectemptypage' %}active{% endif %}">🔍 Detect Empty Page</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- OCR Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path not in ['/ocr', '/ocrtifimagewithdetails'] %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#ocrOps"
+                    aria-expanded="{% if request.path in ['/ocr', '/ocrtifimagewithdetails'] %}true{% else %}false{% endif %}">
+                    📄 OCR Operations
+                </button>
+            </h2>
+            <div
+                id="ocrOps"
+                class="accordion-collapse collapse {% if request.path in ['/ocr', '/ocrtifimagewithdetails'] %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('ocr_page') }}" class="{% if request.path == '/ocr' %}active{% endif %}">📄 OCR TIF Image</a>
+                    <a href="{{ url_for('ocr_tif_image_with_details_page') }}" class="{% if request.path == '/ocrtifimagewithdetails' %}active{% endif %}">🧩 OCR TIF Image (With Details)</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Classification Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path not in ['/classifications', '/trainclassification', '/getclassification'] %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#classificationOps"
+                    aria-expanded="{% if request.path in ['/classifications', '/trainclassification', '/getclassification'] %}true{% else %}false{% endif %}">
+                    🏷️ Classification Operations
+                </button>
+            </h2>
+            <div
+                id="classificationOps"
+                class="accordion-collapse collapse {% if request.path in ['/classifications', '/trainclassification', '/getclassification'] %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('classifications_page') }}" class="{% if request.path == '/classifications' %}active{% endif %}">📋 Classifications</a>
+                    <a href="{{ url_for('train_classification_page') }}" class="{% if request.path == '/trainclassification' %}active{% endif %}">🧪 Train Classification</a>
+                    <a href="{{ url_for('get_classification_page') }}" class="{% if request.path == '/getclassification' %}active{% endif %}">🧾 Get Classification</a>
+                </div>
+            </div>
+        </div>
+        <!-- Check Data Exists Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/checkdataexists' %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#checkDataOps"
+                    aria-expanded="{% if request.path == '/checkdataexists' %}true{% else %}false{% endif %}">
+                    ✅ Check Data Exists Operations
+                </button>
+            </h2>
+            <div
+                id="checkDataOps"
+                class="accordion-collapse collapse {% if request.path == '/checkdataexists' %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('check_data_exists_page') }}" class="{% if request.path == '/checkdataexists' %}active{% endif %}">✅ Check Data Exists</a>
+                </div>
+            </div>
+        </div>
+        <!-- BERT Classification Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/bertclassificationtrain' %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#bertOps"
+                    aria-expanded="{% if request.path == '/bertclassificationtrain' %}true{% else %}false{% endif %}">
+                    🤖 BERT Classification Operations
+                </button>
+            </h2>
+            <div
+                id="bertOps"
+                class="accordion-collapse collapse {% if request.path == '/bertclassificationtrain' %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('bert_classification_train_page') }}" class="{% if request.path == '/bertclassificationtrain' %}active{% endif %}">🎯 Train BERT Classification</a>
+                    <a href="{{ url_for('bert_classification_detect_page') }}" class="{% if request.path == '/bertclassificationdetect' %}active{% endif %}">🔍 Detect BERT Classification</a>
+                </div>
+            </div>
+        </div>
+        <!-- Audio Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/audiotranscription' %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#audioOps"
+                    aria-expanded="{% if request.path == '/audiotranscription' %}true{% else %}false{% endif %}">
+                    🎤 Audio Operations
+                </button>
+            </h2>
+            <div
+                id="audioOps"
+                class="accordion-collapse collapse {% if request.path == '/audiotranscription' %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('audio_transcription_page') }}" class="{% if request.path == '/audiotranscription' %}active{% endif %}">📝 Transcribe Audio</a>
+                </div>
+            </div>
+        </div>
+        <!-- LLaMA Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/llamaquestionanswer' %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#llamaOps"
+                    aria-expanded="{% if request.path == '/llamaquestionanswer' %}true{% else %}false{% endif %}">
+                    🦙 LLaMA Operations
+                </button>
+            </h2>
+            <div
+                id="llamaOps"
+                class="accordion-collapse collapse {% if request.path == '/llamaquestionanswer' %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('llama_question_answer_page') }}" class="{% if request.path == '/llamaquestionanswer' %}active{% endif %}">❓ Question Answer</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="main-content" id="mainContent">
+    {% block content %}{% endblock %}
+</div>
+
+<div class="loader">
+    <div class="spinner-border text-success" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+<script>
+function showLoader() {
+    document.querySelector('.loader').style.display = 'block';
+}
+function hideLoader() {
+    document.querySelector('.loader').style.display = 'none';
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('full');
+}
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

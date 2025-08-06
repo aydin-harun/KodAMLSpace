@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Check Data Exists{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">Check Data Exists</div>
+    <div class="card-body">
+        <form id="checkDataForm">
+            <div class="mb-3">
+                <label class="form-label">OCR Content</label>
+                <textarea class="form-control" id="content" rows="5" required></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Check Values (JSON Array)</label>
+                <textarea class="form-control" id="checkValues" rows="5" placeholder='[{"key":"yer","text":"Pekin Temsilciliği"},{"key":"tip","text":"Çalışma İzin ve Vize Başvuruları"}]' required></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Method</label><br>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="method" id="method1" value="bert" checked>
+                    <label class="form-check-label" for="method1">Semantic Bert</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="method" id="method2" value="rapidfuzz">
+                    <label class="form-check-label" for="method2">TF-IDF</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="method" id="method3" value="llama">
+                    <label class="form-check-label" for="method3">LLama Instruct 3B</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Check</button>
+        </form>
+
+        <div id="resultMsg" class="mt-3"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("checkDataForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const content = document.getElementById("content").value.trim();
+    const checkValuesRaw = document.getElementById("checkValues").value.trim();
+    const method = document.querySelector('input[name="method"]:checked').value;
+
+    if (!content || !checkValuesRaw) {
+        document.getElementById("resultMsg").innerHTML =
+            `<div class="alert alert-danger">Both OCR Content and Check Values are required</div>`;
+        return;
+    }
+
+    if (method !== "bert" && method !=="rapidfuzz" && method !== "llama") {
+        document.getElementById("resultMsg").innerHTML =
+            `<div class="alert alert-info">Only Bert, Rapid Fuzz, Llama method implemented yet</div>`;
+        return;
+    }
+
+    let checkValues;
+    try {
+        checkValues = JSON.parse(checkValuesRaw);
+    } catch (err) {
+        document.getElementById("resultMsg").innerHTML =
+            `<div class="alert alert-danger">Check Values is not valid JSON</div>`;
+        return;
+    }
+
+    showLoader();
+
+    const payload = {
+        content: content,
+        checkValues: checkValues
+    };
+    let apiUrl = ""
+    if (method === "bert") {
+        apiUrl = "/api/getsemanticdataexistsratiorb"
+    }
+    else if (method === "rapidfuzz") {
+        apiUrl = "/api/getdataexistsratiorf"
+    }
+    else if (method === "llama") {
+        apiUrl = "/api/getsemanticdataexistsratiol"
+    }
+    fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        hideLoader();
+        if (data.Success) {
+            document.getElementById("resultMsg").innerHTML =
+                `<div class="alert alert-success"><pre>${JSON.stringify(data.Data, null, 2)}</pre></div>`;
+        } else {
+            document.getElementById("resultMsg").innerHTML =
+                `<div class="alert alert-danger">${data.Description || "Error"}</div>`;
+        }
+    })
+    .catch(err => {
+        hideLoader();
+        document.getElementById("resultMsg").innerHTML =
+            `<div class="alert alert-danger">Request failed</div>`;
+        console.error(err);
+    });
+});
+</script>
+{% endblock %}

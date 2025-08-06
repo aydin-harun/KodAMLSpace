@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}OCR TIF Image{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">OCR TIF Image</div>
+    <div class="card-body">
+        <form id="ocrForm">
+            <div class="mb-3">
+                <label class="form-label">Select TIF Image</label>
+                <input type="file" class="form-control" id="ocrFile" accept=".tif,image/tiff" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Run OCR</button>
+        </form>
+        <div id="ocrResult" class="mt-3"></div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("ocrForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById("ocrFile").files[0];
+    const reader = new FileReader();
+    reader.onloadend = function() {
+        const base64 = reader.result.split(",")[1];
+
+        showLoader();
+        fetch("/api/ocrtifimage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: base64 })
+        })
+        .then(res => res.json())
+        .then(data => {
+            hideLoader();
+            document.getElementById("ocrResult").innerHTML =
+                `<div class="alert alert-${data.Success ? 'success' : 'danger'}">
+                    ${JSON.stringify(data.Data)}
+                </div>`;
+        })
+        .catch(err => {
+            hideLoader();
+            console.error(err);
+        });
+    }
+    reader.readAsDataURL(fileInput);
+});
+</script>
+{% endblock %}

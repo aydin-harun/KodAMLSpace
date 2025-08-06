@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Get Classification{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">Get Classification</div>
+    <div class="card-body">
+        <form id="getClassificationForm">
+            <div class="mb-3">
+                <label class="form-label">OCR Content</label>
+                <textarea class="form-control" id="content" rows="8" placeholder="Paste OCR content here" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Get Classification</button>
+        </form>
+
+        <div id="resultMsg" class="mt-3"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("getClassificationForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const content = document.getElementById("content").value.trim();
+
+    if (!content) {
+        document.getElementById("resultMsg").innerHTML =
+            `<div class="alert alert-danger">Content is required</div>`;
+        return;
+    }
+
+    showLoader();
+
+    fetch("/api/getclassification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: content })
+    })
+    .then(res => res.json())
+    .then(data => {
+        hideLoader();
+        if (data.Success) {
+            document.getElementById("resultMsg").innerHTML =
+                `<div class="alert alert-success"><pre>${JSON.stringify(data.Data, null, 2)}</pre></div>`;
+        } else {
+            document.getElementById("resultMsg").innerHTML =
+                `<div class="alert alert-danger">${data.Data}</div>`;
+        }
+    })
+    .catch(err => {
+        hideLoader();
+        console.error(err);
+        document.getElementById("resultMsg").innerHTML =
+            `<div class="alert alert-danger">Request failed</div>`;
+    });
+});
+</script>
+{% endblock %}

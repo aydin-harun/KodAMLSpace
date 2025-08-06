@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import joblib
 from typing import Optional, Tuple, List, Literal
+import base64
 
 class BarcodePresenceClassifier:
     def __init__(
@@ -147,6 +148,18 @@ class BarcodePresenceClassifier:
         roi_resized = cv2.resize(roi, self.img_size)
         return roi_resized
 
+    def getImageData(self, imageBase64_str:str):
+        if imageBase64_str.lower().endswith((".tif", ".jpeg", ".jpg")):
+            img = cv2.imread(imageBase64_str, cv2.IMREAD_GRAYSCALE)
+            return img
+        else:
+            # --- Base64'ü çöz ---
+            img_data = base64.b64decode(imageBase64_str)
+            np_arr = np.frombuffer(img_data, np.uint8)
+            # --- Görseli OpenCV ile çözümle ---
+            img = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
+            return img
+
     # ----- TESPİT -----
     def detect_on_page(
         self,
@@ -159,7 +172,7 @@ class BarcodePresenceClassifier:
         if verbose is None:
             verbose = self.verbose
 
-        page = cv2.imread(tif_path, cv2.IMREAD_GRAYSCALE)
+        page = self.getImageData(tif_path)
         if page is None:
             raise FileNotFoundError(f"Sayfa yüklenemedi: {tif_path}")
 

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Classifications{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">Classifications</div>
+    <div class="card-body">
+        <form id="listForm" class="row g-3 mb-3">
+            <div class="col-auto">
+                <input type="number" class="form-control" id="inputId" placeholder="ID (optional)">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">List</button>
+            </div>
+        </form>
+
+        <div id="errorMsg" class="mb-3"></div>
+
+        <table class="table table-bordered table-striped" id="resultTable" style="width:100%; display:none;">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Deleted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">Confirm Delete</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete item ID: <span id="deleteId"></span>?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!--<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>-->
+<!--<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>-->
+<!--<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet"/>-->
+
+<!--<script src="/static/js/jquery.dataTables.min.js"></script>-->
+<!--<script src="/static/js/dataTables.bootstrap5.min.js"></script>-->
+<!--<link href="/static/css/dataTables.bootstrap5.min.css" rel="stylesheet"/>-->
+
+
+<script>
+let table;
+let selectedDeleteId;
+
+document.getElementById("listForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const idVal = document.getElementById("inputId").value || 0;
+
+    showLoader();
+    fetch("/api/getclassifications?id="+idVal)
+    .then(res => res.json())
+    .then(data => {
+        hideLoader();
+        if (!data.Success) {
+            document.getElementById("errorMsg").innerHTML =
+                `<div class="alert alert-danger">${JSON.stringify(data.Data)}</div>`;
+            return;
+        }
+
+        if (table) {
+            table.destroy();
+        }
+
+        const tbody = document.querySelector("#resultTable tbody");
+        tbody.innerHTML = "";
+        data.Data.forEach(row => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${row.Id}</td>
+                <td>${row.ClassificationTypeName}</td>
+                <td>${row.Deleted}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="openDeleteModal(${row.Id})">Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById("resultTable").style.display = "table";
+        document.getElementById("errorMsg").innerHTML = "";
+
+        table = new DataTable('#resultTable');
+    })
+    .catch(err => {
+        hideLoader();
+        console.error(err);
+    });
+});
+
+function openDeleteModal(id) {
+    selectedDeleteId = id;
+    document.getElementById("deleteId").innerText = id;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+document.getElementById("confirmDeleteBtn").addEventListener("click", function() {
+    if (!selectedDeleteId) return;
+
+    showLoader();
+    fetch("/api/deleteclassification?id="+selectedDeleteId, {
+        method: "DELETE"
+    })
+    .then(res => res.json())
+    .then(data => {
+        hideLoader();
+        bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+
+        if (data.Success) {
+            document.getElementById("errorMsg").innerHTML =
+                `<div class="alert alert-success">Item ${selectedDeleteId} deleted successfully</div>`;
+            document.getElementById("listForm").dispatchEvent(new Event("submit"));
+        } else {
+            document.getElementById("errorMsg").innerHTML =
+                `<div class="alert alert-danger">${JSON.stringify(data.Data)}</div>`;
+        }
+    })
+    .catch(err => {
+        hideLoader();
+        console.error(err);
+    });
+});
+</script>
+{% endblock %}
