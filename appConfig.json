@@ -12,7 +12,7 @@
   "useBertModelOperation": false,
   "useGensimModelOperation": false,
   "useEasyOcrOperation": true,
-  "useEmptyPageOperation" : false,
+  "useEmptyPageOperation" : true,
   "useRapifFuzzOperation" : false,
   "debugMode": true,
   "useLlama3BVision": false,
@@ -22,5 +22,15 @@
   "useWhisperTranscribeOperation" : false,
   "whisperTranscribeModelPath" : "C:\\Users\\aydin\\.cache\\huggingface\\hub\\models--openai--whisper-base\\snapshots\\e37978b90ca9030d5170a5c07aadb050351a65bb",
   "useBarcodeDetectOperation": false,
-  "barcodeDetectModelPath": "C:\\Users\\aydin\\Documents\\PythonProjects\\KodAMLSpace\\mlModels\\detectBarcodeModel\\barcode_detect_presence.pkl"
+  "barcodeDetectModelPath": "C:\\Users\\aydin\\Documents\\PythonProjects\\KodAMLSpace\\mlModels\\detectBarcodeModel\\barcode_detect_presence.pkl",
+  "emptyPageModelConfig": {
+    "rfModelPath":"C:\\Users\\aydin\\Documents\\PythonProjects\\KodAMLSpace\\mlModels\\detectEmptyPageModel\\page_classifier_enhanced_rf.pkl",
+    "xgbModelPath":"C:\\Users\\aydin\\Documents\\PythonProjects\\KodAMLSpace\\mlModels\\detectEmptyPageModel\\page_classifier_enhanced_xgb.pkl",
+    "lgbmModelPath": "C:\\Users\\aydin\\Documents\\PythonProjects\\KodAMLSpace\\mlModels\\detectEmptyPageModel\\page_classifier_enhanced_lgbm.pkl",
+    "catboostModelPath": "C:\\Users\\aydin\\Documents\\PythonProjects\\KodAMLSpace\\mlModels\\detectEmptyPageModel\\page_classifier_enhanced_catboost.pkl",
+    "isRfModelUsing": true,
+    "isXgbModelUsing": true,
+    "isLgbmModelUsing": true,
+    "isCatboostModelUsing": true
+  }
 }
