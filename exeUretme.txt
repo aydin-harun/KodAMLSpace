@@ -1,3 +1,4 @@
 pyinstaller --noconfirm --onedir --console --icon "C:\Users\aydin\Downloads\ml_dokuman_KodA.ico" --name "KodAMLSpace" --hidden-import "scipy" --hidden-import "skimage" --hidden-import "transformers.models.gemma3n" --hidden-import "transformers.models.t5gemma" --hidden-import "transformers.models.bert" --hidden-import "transformers.models.glm4v" --hidden-import "transformers.models.smollm3" --collect-submodules "skimage" --collect-submodules "scipy" --collect-data "scipy" --collect-data "skimage"  "C:\Users\aydin\Documents\PythonProjects\KodAMLSpace\aiImageProcessApi.py" --noconsole
 
 C:\Users\aydin\Documents\PythonProjects\KodAMLSpace\.venv\Lib\site-packages\transformers\models\t5gemma altındaki py dosyları exe klasorunde aynı path e kopyalanmalı
+template ve static klasorleri .venv altına kopyalanır

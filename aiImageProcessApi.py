@@ -31,7 +31,8 @@ def api_train_emptyPage_model():
     data = request.get_json()
     empty_dir = data.get("empty_dir")
     filled_dir = data.get("filled_dir")
-    result = imgProcessBS.trainEmptyPageModel(empty_dir, filled_dir)
+    model_type = data.get("model_type")
+    result = imgProcessBS.trainEmptyPageModel(empty_dir, filled_dir, model_type)
     if result.get("Error"):
         jData = {"Success": False, "Code": 400, "Data": None , "Description": result.get("ErrorMessage")}
         return jData , 400 # result, 400
@@ -45,7 +46,8 @@ def api_detectEmptyPage_page():
     if result.get("Error"):
         jData = {"Success": False, "Code": 400, "Data": None , "Description": result.get("ErrorMessage")}
         return jsonify(jData) , 400# result, 400
-    return jsonify({"Success": True, "Code": 200, "Data": result, "Description": "Operation Successful"}), 200
+    data = result.get("Data")
+    return jsonify({"Success": True, "Code": 200, "Data": data, "Description": "Operation Successful"}), 200
 
 @app.route("/api/ocrtifimage", methods=["POST"])
 def api_ocr_tif_image():
@@ -54,8 +56,8 @@ def api_ocr_tif_image():
     result = imgProcessBS.ocrTifImage(input_data)
     if result.get("Error"):
         jData = {"Success": False, "Code": 400, "Data": None , "Description": result.get("ErrorMessage")}
-        return jData , 400# result, 400
-    return  {"Success": True, "Code": 200, "Data": str(result), "Description": "Operation Successful"}, 200
+        return jsonify(jData) , 400# result, 400
+    return  jsonify({"Success": True, "Code": 200, "Data": result, "Description": "Operation Successful"}), 200
 
 @app.route("/api/ocrtifimagewithdetails", methods=["POST"])
 def api_ocr_tif_image_withdetails():
@@ -66,7 +68,7 @@ def api_ocr_tif_image_withdetails():
     result = imgProcessBS.ocrTifImageWithDetails(imageBase64_srt= input_data,useParagraph= item_useParagraph,useWidth_ths= item_useWidth_ths)
     if result.get("Error"):
         jData = {"Success": False, "Code": 400, "Data": None , "Description": result.get("ErrorMessage")}
-        return jData , 400# result, 400
+        return jsonify(jData) , 400# result, 400
     jData = {"Success": True, "Code": 200, "Data": result, "Description": "Operation Successful"}
     return jsonify(jData), 200
 
@@ -289,8 +291,6 @@ def llama_question_answer_page():
 @app.route("/ocrtifimagewithdetails")
 def ocr_tif_image_with_details_page():
     return render_template("ocr_tif_image_with_details.html")
-
-
 
 
 if __name__ == "__main__":

@@ -13,6 +13,25 @@
                 <label class="form-label">Filled Directory</label>
                 <input type="text" class="form-control" id="filledDir" required>
             </div>
+            <div class="mb-3">
+                <label class="form-label">Method</label><br>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="method" id="method1" value="rf" checked>
+                    <label class="form-check-label" for="method1">Random Forest</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="method" id="method2" value="xgb">
+                    <label class="form-check-label" for="method2">XGBoost</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="method" id="method3" value="lgbm">
+                    <label class="form-check-label" for="method3">Lightgbm</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="method" id="method4" value="catboost">
+                    <label class="form-check-label" for="method4">CatBoost</label>
+                </div>
+            </div>
             <button type="submit" class="btn btn-primary">Train</button>
         </form>
         <div id="trainResult" class="mt-3"></div>
@@ -25,12 +44,13 @@ document.getElementById("trainForm").addEventListener("submit", function(e) {
     e.preventDefault();
     const emptyDir = document.getElementById("emptyDir").value;
     const filledDir = document.getElementById("filledDir").value;
+    const method = document.querySelector('input[name="method"]:checked').value;
 
     showLoader();
     fetch("/api/trainEmptyPageModel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ empty_dir: emptyDir, filled_dir: filledDir })
+        body: JSON.stringify({ empty_dir: emptyDir, filled_dir: filledDir, model_type: method})
     })
     .then(res => res.json())
     .then(data => {
