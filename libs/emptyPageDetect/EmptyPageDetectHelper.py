@@ -156,18 +156,18 @@ def predict_page(imageBase64_str, model_path="../../mlModels/detectEmptyPageMode
         print(f"Hata : {str(e)}")
         return ("Ölçüm Yapılamadı", 0.0, 0.0)
 
-#trainModel("train_pages/empty","train_pages/filled")
-
+# trainModel("train_pages/empty","train_pages/filled")
+#
 # if __name__ == "__main__":
 #     if len(sys.argv) < 2:
 #         print("0,0.00")  # hata gibi davran
 #         sys.exit(1)
 #     predict_page(sys.argv[1])
-
+#
 # Test et (isteğe bağlı dosya yolları girin)
 # predict_page("test_image.tif")
-
-
+#
+#
 # # print( datetime.datetime.now())
 # # # Kullanım örneği
 # label, pred, prop = predict_page("../../sampleImages/1.tif")

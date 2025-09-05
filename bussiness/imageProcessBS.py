@@ -5,16 +5,15 @@ from libs.llamaLibs.LlamaInstructHelper import LlamaInstructHelper
 from libs.utils import strHelper
 from libs.utils.configReader import AppConfig, loadConfig
 import dataAccessLayer.SqliteDataOperations as dataOperation
-import libs.emptyPageDetect.EmptyPageDetectHelper as emptyPageDetectHelper
-import  libs.utils.fileHelper as fileHelper
+import libs.emptyPageDetect.EmptyPageDetectHelperV2 as emptyPageDetectHelperV2
+import libs.utils.fileHelper as fileHelper
 import  os
-import  libs.ocrPage.easyOcrEngine as easyOcrEngine
+import libs.ocrPage.easyOcrEngine as easyOcrEngine
 import base64
 import libs.gensimLib.gensimOperations as go
-import  libs.rapidfuzzLib.rapidfuzzOperations as rf
+import libs.rapidfuzzLib.rapidfuzzOperations as rf
 import  logging
-from  libs.utils.logger_config import setup_logging
-from decimal import Decimal
+from libs.utils.logger_config import setup_logging
 from libs.whisperLib.WhisperTranscriber import WhisperTranscriber
 from libs.barcodeDetect.BarcodePresenceClassifier import BarcodePresenceClassifier
 
@@ -35,6 +34,7 @@ llama3BInstructHlp : LlamaInstructHelper = None
 whisperTranscriber :WhisperTranscriber = None
 barcodeDetectModelCount = 0
 brcPresenceClassifier : BarcodePresenceClassifier = None
+emptyPageClassifier : emptyPageDetectHelperV2.EmptyPageClassifier = None
 
 #region initialize
 def loadAppConfig():
@@ -50,18 +50,34 @@ def loadAppConfig():
 def loadModels():
     global appConfig, eOcrEngine, bertDocClassifier, emptyPageModelCount, gensimModelCount, \
         bertModelCount, llama3BInstructHlp, whisperTranscriber, \
-        barcodeDetectModelPath, barcodeDetectModelCount, brcPresenceClassifier
+        barcodeDetectModelPath, barcodeDetectModelCount, brcPresenceClassifier, emptyPageClassifier
     try:
         if appConfig.useEmptyPageOperation:
-            rows = getEmptyPageModel()
-            if len(rows)>0:
-                fileHelper.delFileIfExists(appConfig.emptyPageModelPath)
-                fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelPath))
-                fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelPath),
-                                     os.path.basename(appConfig.emptyPageModelPath), rows[0][1])
+            rows = getEmptyPageModels()
+            for row in rows:
+                if row[3] == emptyPageDetectHelperV2.ModelType.rf.value:
+                    fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.rfModelPath)
+                    fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.rfModelPath))
+                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.rfModelPath),
+                                         os.path.basename(appConfig.emptyPageModelConfig.rfModelPath), row[1])
+                elif row[3] == emptyPageDetectHelperV2.ModelType.xgb.value:
+                    fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.xgbModelPath)
+                    fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.xgbModelPath))
+                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.xgbModelPath),
+                                         os.path.basename(appConfig.emptyPageModelConfig.xgbModelPath), row[1])
+                elif row[3] == emptyPageDetectHelperV2.ModelType.lgbm.value:
+                    fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.lgbmModelPath)
+                    fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.lgbmModelPath))
+                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.lgbmModelPath),
+                                         os.path.basename(appConfig.emptyPageModelConfig.lgbmModelPath), row[1])
+                elif row[3] == emptyPageDetectHelperV2.ModelType.catboost.value:
+                    fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.catboostModelPath)
+                    fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath))
+                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath),
+                                         os.path.basename(appConfig.emptyPageModelConfig.catboostModelPath), row[1])
                 emptyPageModelCount = emptyPageModelCount + 1
-            emptyPageDetectHelper.loadModel(appConfig.emptyPageModelPath)
-            print("✅✅ Emty Page Detect Model Yüklendi")
+            emptyPageClassifier = emptyPageDetectHelperV2.EmptyPageClassifier(appConfig.emptyPageModelConfig)
+            print("✅✅ Emty Page Detect Model(ler) Yüklendi. Model Sayısı:"+str(emptyPageModelCount))
         if appConfig.useEasyOcrOperation:
             eOcrEngine = easyOcrEngine.EasyOcrEngine(appConfig.ocrModelDir)
             print("✅✅ Ocr Model Yüklendi")
@@ -224,21 +240,21 @@ def similarClassification(docContent):
         return {"Data": None, "ErrorMessage": str(e), "Description": "", "Error": True}
 #endregion
 #region emptyPages
-def insertEmptyPageModel(modelData, deleted):
-    dataOperation.execCommand("DELETE FROM EmptyPageModel", None)
+def insertEmptyPageModel(modelData, deleted, modelType):
+    dataOperation.execCommand("DELETE FROM EmptyPageModel WHERE ModelType = ?", [modelType])
 
-    new_id = dataOperation.execCommand("INSERT INTO EmptyPageModel(ModelFile, Deleted) VALUES(? , ?)",
-                   [ modelData, deleted], True)
+    new_id = dataOperation.execCommand("INSERT INTO EmptyPageModel(ModelFile, Deleted, ModelType) VALUES(? , ? , ?)",
+                   [ modelData, deleted, modelType], True)
     rows = dataOperation.getData(
-        '''SELECT EmptyPageModelId,ModelFile,Deleted FROM EmptyPageModel WHERE EmptyPageModelId = ?''',
+        '''SELECT EmptyPageModelId,ModelFile,Deleted, ModelType FROM EmptyPageModel WHERE EmptyPageModelId = ?''',
         [new_id])
     return rows
 
-def getEmptyPageModel():
-    rows = dataOperation.getData( '''SELECT EmptyPageModelId,ModelFile,Deleted FROM EmptyPageModel''', None)
+def getEmptyPageModels():
+    rows = dataOperation.getData( '''SELECT EmptyPageModelId,ModelFile,Deleted,ModelType FROM EmptyPageModel''', None)
     return rows
 
-def trainEmptyPageModel(emptyPagesDir, filledPagesDir):
+def trainEmptyPageModel(emptyPagesDir, filledPagesDir, modelType):
     global appConfig
     try:
         if not appConfig.useEmptyPageOperation:
@@ -248,9 +264,9 @@ def trainEmptyPageModel(emptyPagesDir, filledPagesDir):
         if (emptyPagesDir == "" or filledPagesDir == "" or
                 not os.path.isdir(emptyPagesDir) or not os.path.isdir(filledPagesDir)):
             return {"Data": None, "ErrorMessage": "Eğitim Dosyaları Eksik", "Description": "", "Error": True}
-        modelFileName = emptyPageDetectHelper.trainModel(emptyPagesDir,filledPagesDir)
+        modelFileName =  emptyPageClassifier._train_model(emptyPagesDir,filledPagesDir, modelType)
         modelFileBytes = fileHelper.readFileAllBytes(modelFileName)
-        insertEmptyPageModel(modelFileBytes,0)
+        insertEmptyPageModel(modelFileBytes,0,modelType)
         return {"Data": None, "ErrorMessage": "", "Description": "", "Error": False}
     except Exception as e:
         print(f"🛑🛑🛑Hata : {str(e)}")
@@ -264,8 +280,8 @@ def detectEmptyPage(imageBase64_srt):
             return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
         if imageBase64_srt is None:
             return {"Data": None, "ErrorMessage": "Geçersiz Image Datası", "Description": "", "Error": True}
-        label, pred, prop = data = emptyPageDetectHelper.predict_page(imageBase64_srt, appConfig.emptyPageModelPath)
-        return {"Data": {"Label" : label, "Pred" : int(pred) , "Prop" : Decimal(prop)}, "ErrorMessage": "", "Description": "", "Error": False}
+        data = emptyPageClassifier.predict(imageBase64_srt, False)
+        return {"Data": data, "ErrorMessage": "", "Description": "", "Error": False}
     except Exception as e:
         return {"Data": None, "ErrorMessage": str(e), "Description": "", "Error": True}
 #endregion
