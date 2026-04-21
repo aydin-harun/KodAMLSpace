@@ -8,10 +8,12 @@ class EmptyPageModelConfig:
     xgbModelPath:str
     lgbmModelPath:str
     catboostModelPath:str
+    cnnModelPath: str
     isRfModelUsing:bool
     isXgbModelUsing:bool
     isLgbmModelUsing: bool
     isCatboostModelUsing: bool
+    isCNNModelUsing: bool
 
 
 @dataclass
@@ -32,15 +34,17 @@ class AppConfig:
     useEmptyPageOperation:bool
     useRapifFuzzOperation:bool
     debugMode:bool
-    useLlama3BVision:bool
-    useLlama11BVisionInstruct:bool
-    llamaInstruct3BModelPath:str
-    llamaVisionInstruct11BModelPath:str
+    useLlama:bool
+    llamaModelType:int
+    llamaModelPath:str
     useWhisperTranscribeOperation:bool
     whisperTranscribeModelPath:str
     useBarcodeDetectOperation:bool
     barcodeDetectModelPath:str
     emptyPageModelConfig:EmptyPageModelConfig
+    useQWen: bool
+    qwenModelType: int
+    qwenModelPath: str
 
     @classmethod
     def from_dict(cls, data: dict):

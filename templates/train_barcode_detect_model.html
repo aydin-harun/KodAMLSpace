@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Train Barcode Detect Model{% endblock %}
+{% block content %}
+
+<div class="card">
+    <div class="card-header">Train Barcode Detect Model</div>
+    <div class="card-body">
+        <form id="trainBarcodeForm">
+            <div class="mb-3">
+                <label class="form-label">Barcode Directory Path</label>
+                <input type="text" class="form-control" id="barcode_dir" placeholder="Path to directory with barcode images" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">No Barcode Directory Path</label>
+                <input type="text" class="form-control" id="nobarcode_dir" placeholder="Path to directory with no-barcode images" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Start Training</button>
+        </form>
+
+        <div id="trainResult" class="mt-3"></div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("trainBarcodeForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    const barcodeDir = document.getElementById("barcode_dir").value.trim();
+    const nobarcodeDir = document.getElementById("nobarcode_dir").value.trim();
+
+    if (!barcodeDir || !nobarcodeDir) {
+        document.getElementById("trainResult").innerHTML =
+            `<div class="alert alert-danger">Both directory paths are required</div>`;
+        return;
+    }
+
+    showLoader();
+
+    fetch("/api/trainBarcodeDetectModel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            barcode_dir: barcodeDir,
+            nobarcode_dir: nobarcodeDir
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        hideLoader();
+        if (data.Success) {
+            document.getElementById("trainResult").innerHTML =
+                `<div class="alert alert-success">${data.Description}</div>`;
+        } else {
+            document.getElementById("trainResult").innerHTML =
+                `<div class="alert alert-danger">${data.Description || "Error"}</div>`;
+        }
+    })
+    .catch(err => {
+        hideLoader();
+        console.error(err);
+        document.getElementById("trainResult").innerHTML =
+            `<div class="alert alert-danger">Request failed</div>`;
+    });
+});
+</script>
+{% endblock %}

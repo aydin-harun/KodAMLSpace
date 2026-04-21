@@ -235,7 +235,28 @@ body {
                 </div>
             </div>
         </div>
-
+        <!-- Barcode Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path not in ['/barcodedetect', '/trainbarcodedetectmodel'] %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#barcodeOps"
+                    aria-expanded="{% if request.path in ['/barcodedetect', '/trainbarcodedetectmodel'] %}true{% else %}false{% endif %}">
+                    🧾 Barcode Operations
+                </button>
+            </h2>
+            <div
+                id="barcodeOps"
+                class="accordion-collapse collapse {% if request.path in ['/barcodedetect', '/trainbarcodedetectmodel'] %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('barcode_detect_page') }}" class="{% if request.path == '/barcodedetect' %}active{% endif %}">📷 Detect Barcode</a>
+                    <a href="{{ url_for('train_barcode_detect_model_page') }}" class="{% if request.path == '/trainbarcodedetectmodel' %}active{% endif %}">⚙️ Train Barcode Model</a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

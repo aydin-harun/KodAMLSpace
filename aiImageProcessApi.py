@@ -292,6 +292,52 @@ def llama_question_answer_page():
 def ocr_tif_image_with_details_page():
     return render_template("ocr_tif_image_with_details.html")
 
+@app.route("/barcodedetect")
+def barcode_detect_page():
+    return render_template("barcode_detect.html")
+
+@app.route('/api/barcodedetect', methods=['POST'])
+def get_barcode_detect():
+    reqContent = request.get_json()
+    if reqContent is None:
+        jData = {"Success": False, "Code": 400, "Data": None, "Description":"Invalid Parameters" }
+        return jsonify(jData), 400  # result, 400
+    result = imgProcessBS.detectBarcode(reqContent.get("content"))
+    if result.get("Error"):
+        jData = {"Success": False, "Code": 400, "Data": None, "Description": result.get("ErrorMessage")}
+        return jsonify(jData), 400  # result, 400
+    data = result.get("Data")
+    jData = {"Success": True, "Code": 200, "Data": data, "Description": "Operation Successful"}
+    return jsonify(jData), 200
+
+@app.route("/trainbarcodedetectmodel")
+def train_barcode_detect_model_page():
+    return render_template("train_barcode_detect_model.html")
+
+@app.route("/api/trainBarcodeDetectModel", methods=["POST"])
+def api_train_barcode_detect_model():
+    data = request.get_json()
+    barcode_dir = data.get("barcode_dir")
+    no_barcode_dir = data.get("nobarcode_dir")
+    result = imgProcessBS.trainBarcodeDetectModel(barcode_dir, no_barcode_dir)
+    if result.get("Error"):
+        jData = {"Success": False, "Code": 400, "Data": None , "Description": result.get("ErrorMessage")}
+        return jData , 400 # result, 400
+    return  {"Success": True, "Code": 200, "Data": str(result), "Description": "Operation Successful"}, 200
+
+@app.route('/api/qwenQuestionAnswer', methods=['POST'])
+def getQWenQuestionAnswer():
+    reqContent = request.get_json()
+    if reqContent is None:
+        jData = {"Success": False, "Code": 400, "Data": None, "Description":"Invalid Parameters" }
+        return jsonify(jData), 400  # result, 400
+    result = imgProcessBS.qwenQuestionAnswer(content=reqContent.get("content"),schema=reqContent.get("_schema"), userPromt=reqContent.get("userPrompt"))
+    if result.get("Error"):
+        jData = {"Success": False, "Code": 400, "Data": None, "Description": result.get("ErrorMessage")}
+        return jsonify(jData), 400  # result, 400
+    data = result.get("Data")
+    jData = {"Success": True, "Code": 200, "Data": data, "Description": "Operation Successful"}
+    return jsonify(jData), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0",debug=imgProcessBS.appConfig.debugMode,use_reloader=False, port=imgProcessBS.appConfig.apiPort)

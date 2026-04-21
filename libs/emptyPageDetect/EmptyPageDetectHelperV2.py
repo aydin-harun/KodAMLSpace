@@ -3,6 +3,7 @@ import cv2
 import joblib
 import base64
 import numpy as np
+import gc
 from skimage.measure import shannon_entropy
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
@@ -18,7 +19,8 @@ class ModelType(Enum):
     rf="rf"
     xgb="xgb"
     lgbm="lgbm"
-    catboost="catboost"
+    catboost="catboost",
+    cnn="cnn"
 
 
 class EmptyPageClassifier:
@@ -32,15 +34,16 @@ class EmptyPageClassifier:
             self.xgbModelUsable: bool = False
             self.lgbmModelUsable: bool = False
             self.catboostModelUsable: bool = False
-        self.emptyPageModelConfig = emptyPageModelConfig
-        self.rfModelUsable : bool = (
-            self.getModelUsable(self.emptyPageModelConfig.isRfModelUsing, self.emptyPageModelConfig.rfModelPath))
-        self.xgbModelUsable: bool = (
-            self.getModelUsable(self.emptyPageModelConfig.isXgbModelUsing, self.emptyPageModelConfig.xgbModelPath))
-        self.lgbmModelUsable: bool = (
-            self.getModelUsable(self.emptyPageModelConfig.isLgbmModelUsing, self.emptyPageModelConfig.lgbmModelPath))
-        self.catboostModelUsable: bool = (
-            self.getModelUsable(self.emptyPageModelConfig.isCatboostModelUsing, self.emptyPageModelConfig.catboostModelPath))
+        else:
+            self.emptyPageModelConfig = emptyPageModelConfig
+            self.rfModelUsable : bool = (
+                self.getModelUsable(self.emptyPageModelConfig.isRfModelUsing, self.emptyPageModelConfig.rfModelPath))
+            self.xgbModelUsable: bool = (
+                self.getModelUsable(self.emptyPageModelConfig.isXgbModelUsing, self.emptyPageModelConfig.xgbModelPath))
+            self.lgbmModelUsable: bool = (
+                self.getModelUsable(self.emptyPageModelConfig.isLgbmModelUsing, self.emptyPageModelConfig.lgbmModelPath))
+            self.catboostModelUsable: bool = (
+                self.getModelUsable(self.emptyPageModelConfig.isCatboostModelUsing, self.emptyPageModelConfig.catboostModelPath))
 
         if self.rfModelUsable:
             self.rfModel = joblib.load(self.emptyPageModelConfig.rfModelPath)
@@ -87,11 +90,15 @@ class EmptyPageClassifier:
             ]
         except Exception as e:
             print(f"[!] Özellik çıkarım hatası: {e}")
+            gc.collect()
             return [0.0] * 8
 
     def extract_features_from_path(self, image_path: str) -> list:
         img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-        return self._extract_features(img)
+        features = self._extract_features(img)
+        del img
+        gc.collect()
+        return features
 
     def extract_features_from_base64(self, b64_str: str) -> list:
         try:
@@ -100,7 +107,10 @@ class EmptyPageClassifier:
             img = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
             if img is None:
                 raise ValueError("Base64 çözümleme başarısız.")
-            return self._extract_features(img)
+            features = self._extract_features(img)
+            del img, np_arr
+            gc.collect()
+            return features
         except Exception as e:
             print(f"[!] Base64 görsel hata: {e}")
             return [0.0] * 8
@@ -129,7 +139,7 @@ class EmptyPageClassifier:
                     files.append((os.path.join(folder, file), label))
 
         total = len(files)
-        print(f"📥 Toplam eğitim verisi: {total} sayfa")
+        print(f"📅 Toplam eğitim verisi: {total} sayfa")
 
         for idx, (path, label) in enumerate(files):
             X.append(self.extract_features_from_path(path))
@@ -177,12 +187,14 @@ class EmptyPageClassifier:
             )
 
         clf.fit(X_train, y_train)
+        del X_train, y_train
         y_pred = clf.predict(X_test)
+        del X_test
 
         print("\n📊 Sınıflandırma Raporu:")
-        print(classification_report(y_test, y_pred, target_names=["Boş", "Dolu"]))
-        print("F1 (macro):", f1_score(y_test, y_pred, average="macro"))
-        print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+        print(classification_report(y, clf.predict(X)))
+        print("F1 (macro):", f1_score(y, clf.predict(X), average="macro"))
+        print("Confusion Matrix:\n", confusion_matrix(y, clf.predict(X)))
 
         os.makedirs(os.path.dirname(modelSavePath), exist_ok=True)
         joblib.dump(clf, modelSavePath)
@@ -200,6 +212,7 @@ class EmptyPageClassifier:
             self.rfModelUsable = True
 
         print(f"✅ Model kaydedildi: {modelSavePath}")
+        gc.collect()
         return modelSavePath
 
     # --- Tahmin ---
@@ -238,6 +251,7 @@ class EmptyPageClassifier:
             remark, clas = self.getDescriptions(prob, pred)
             print(f"➜ Tahmin: {clas} (%{prob:.2f} güven) → [{remark}]")
             results.append({"pred" : int(pred), "prob" : float(prob), "clas" : clas, "remark" : remark, "lib_type":"catboost"})
+        gc.collect()
         return results
 
     def getDescriptions(self,prob, pred):

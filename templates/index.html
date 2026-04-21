@@ -147,8 +147,31 @@
             </div>
         </div>
     </div>
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    📷
+                </div>
+                <h4>Barcode Detection</h4>
+                <p>Detect barcodes in image files.</p>
+                <a href="{{ url_for('barcode_detect_page') }}" class="btn btn-success text-white">Go</a>
+            </div>
+        </div>
+    </div>
 
-
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    ⚙️
+                </div>
+                <h4>Train Barcode Model</h4>
+                <p>Train model for barcode detection.</p>
+                <a href="{{ url_for('train_barcode_detect_model_page') }}" class="btn btn-primary text-white">Go</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}

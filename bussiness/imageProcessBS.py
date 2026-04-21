@@ -16,6 +16,9 @@ import  logging
 from libs.utils.logger_config import setup_logging
 from libs.whisperLib.WhisperTranscriber import WhisperTranscriber
 from libs.barcodeDetect.BarcodePresenceClassifier import BarcodePresenceClassifier
+from libs.emptyPageDetect.CnnEmptyPageDetectHelper import CnnEmptyPageDetector
+from libs.qwenLibs.QWenHelper import QWenHelper
+import json
 
 # os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 # os.environ["PATH"] += os.pathsep + r"C:\ffmpeg\bin"
@@ -35,6 +38,8 @@ whisperTranscriber :WhisperTranscriber = None
 barcodeDetectModelCount = 0
 brcPresenceClassifier : BarcodePresenceClassifier = None
 emptyPageClassifier : emptyPageDetectHelperV2.EmptyPageClassifier = None
+emptyPageClassifierCNN : CnnEmptyPageDetector = None
+qwenHlp : QWenHelper = None
 
 #region initialize
 def loadAppConfig():
@@ -50,7 +55,9 @@ def loadAppConfig():
 def loadModels():
     global appConfig, eOcrEngine, bertDocClassifier, emptyPageModelCount, gensimModelCount, \
         bertModelCount, llama3BInstructHlp, whisperTranscriber, \
-        barcodeDetectModelPath, barcodeDetectModelCount, brcPresenceClassifier, emptyPageClassifier
+        barcodeDetectModelPath, barcodeDetectModelCount, brcPresenceClassifier, \
+        emptyPageClassifier, emptyPageClassifierCNN,\
+        qwenHlp
     try:
         if appConfig.useEmptyPageOperation:
             rows = getEmptyPageModels()
@@ -75,8 +82,15 @@ def loadModels():
                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath))
                     fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath),
                                          os.path.basename(appConfig.emptyPageModelConfig.catboostModelPath), row[1])
+                elif row[3] == emptyPageDetectHelperV2.ModelType.cnn.value:
+                    fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.cnnModelPath)
+                    fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.cnnModelPath))
+                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.cnnModelPath),
+                                         os.path.basename(appConfig.emptyPageModelConfig.cnnModelPath), row[1])
                 emptyPageModelCount = emptyPageModelCount + 1
             emptyPageClassifier = emptyPageDetectHelperV2.EmptyPageClassifier(appConfig.emptyPageModelConfig)
+            if appConfig.emptyPageModelConfig.isCNNModelUsing:
+                emptyPageClassifierCNN = CnnEmptyPageDetector(appConfig.emptyPageModelConfig)
             print("✅✅ Emty Page Detect Model(ler) Yüklendi. Model Sayısı:"+str(emptyPageModelCount))
         if appConfig.useEasyOcrOperation:
             eOcrEngine = easyOcrEngine.EasyOcrEngine(appConfig.ocrModelDir)
@@ -108,15 +122,18 @@ def loadModels():
                 bertDocClassifier.load_model()
             print("✅✅ Classificaiton Model(ler) Yüklendi- Bert")
 
-        if appConfig.useLlama3BVision:
-            llama3BInstructHlp = LlamaInstructHelper(appConfig.llamaInstruct3BModelPath, appConfig.debugMode)
+        if appConfig.useLlama:
+            llama3BInstructHlp = LlamaInstructHelper(appConfig.llamaModelPath, appConfig.debugMode, appConfig.llamaModelType)
             print("✅✅ llama 3B Vision Model Yüklendi- Llama")
         if appConfig.useWhisperTranscribeOperation:
             whisperTranscriber = WhisperTranscriber(appConfig.whisperTranscribeModelPath,"cpu", dtype=torch.float32)
             print("✅✅ Whisper-Base Model Yüklendi- OpenAI")
         if appConfig.useBarcodeDetectOperation:
             rows = getBarcodeDetectModel()
-            brcPresenceClassifier = BarcodePresenceClassifier(model_path=appConfig.barcodeDetectModelPath, deskew=True)
+            brcPresenceClassifier = BarcodePresenceClassifier(model_path=appConfig.barcodeDetectModelPath, img_size=(128, 128),
+                threshold=0.5,
+                deskew=True,
+                verbose=True)
             if len(rows)>0:
                 fileHelper.delFileIfExists(appConfig.barcodeDetectModelPath)
                 fileHelper.createDirIfExists(os.path.dirname(appConfig.barcodeDetectModelPath))
@@ -138,12 +155,16 @@ def loadModels():
             print("---> Bert, Doküman Sınıflandırma ")
         if appConfig.useEmptyPageOperation:
             print("---> Sklearn, Boş Sayfa Tespiti ")
-        if appConfig.useLlama3BVision:
+        if appConfig.useLlama:
             print("---> llama 3B Instruct, Veri Doğrulama - Soru -> Cevap")
         if appConfig.useWhisperTranscribeOperation:
             print("---> Whisper-Base, Transcript - Ses -> Metin")
         if appConfig.useBertModelOperation:
             print("---> Sklearn, Barkod Tespiti")
+
+        if appConfig.useQWen:
+            qwenHlp = QWenHelper(model_path=appConfig.qwenModelPath,debug_mode=appConfig.debugMode)
+            print("✅✅ QWen Model Yüklendi- Llama")
     except Exception as e:
         raise e
 #endregion
@@ -255,7 +276,7 @@ def getEmptyPageModels():
     return rows
 
 def trainEmptyPageModel(emptyPagesDir, filledPagesDir, modelType):
-    global appConfig
+    global appConfig, emptyPageClassifierCNN
     try:
         if not appConfig.useEmptyPageOperation:
             return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
@@ -264,7 +285,11 @@ def trainEmptyPageModel(emptyPagesDir, filledPagesDir, modelType):
         if (emptyPagesDir == "" or filledPagesDir == "" or
                 not os.path.isdir(emptyPagesDir) or not os.path.isdir(filledPagesDir)):
             return {"Data": None, "ErrorMessage": "Eğitim Dosyaları Eksik", "Description": "", "Error": True}
-        modelFileName =  emptyPageClassifier._train_model(emptyPagesDir,filledPagesDir, modelType)
+        modelFileName: str = ""
+        if modelType == emptyPageDetectHelperV2.ModelType.cnn.value and appConfig.emptyPageModelConfig.isCNNModelUsing:
+            modelFileName = emptyPageClassifierCNN.train(emptyPagesDir, filledPagesDir)
+        else:
+            modelFileName = emptyPageClassifier._train_model(emptyPagesDir, filledPagesDir, modelType)
         modelFileBytes = fileHelper.readFileAllBytes(modelFileName)
         insertEmptyPageModel(modelFileBytes,0,modelType)
         return {"Data": None, "ErrorMessage": "", "Description": "", "Error": False}
@@ -274,16 +299,24 @@ def trainEmptyPageModel(emptyPagesDir, filledPagesDir, modelType):
 
 
 def detectEmptyPage(imageBase64_srt):
-    global appConfig, emptyPageModelCount
+    global appConfig, emptyPageModelCount,emptyPageClassifierCNN
     try:
         if not appConfig.useEmptyPageOperation or emptyPageModelCount == 0:
             return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
         if imageBase64_srt is None:
             return {"Data": None, "ErrorMessage": "Geçersiz Image Datası", "Description": "", "Error": True}
+        import datetime
+        print(datetime.datetime.now())
         data = emptyPageClassifier.predict(imageBase64_srt, False)
+        print(datetime.datetime.now())
+        if emptyPageClassifierCNN is not None and appConfig.emptyPageModelConfig.isCNNModelUsing and emptyPageClassifierCNN.checkModelExists():
+            cnnData = emptyPageClassifierCNN.predict_from_base64(imageBase64_srt)
+            print(datetime.datetime.now())
+            data.append(cnnData)
         return {"Data": data, "ErrorMessage": "", "Description": "", "Error": False}
     except Exception as e:
         return {"Data": None, "ErrorMessage": str(e), "Description": "", "Error": True}
+
 #endregion
 #region ocr
 def ocrTifImage(imageBase64_srt):
@@ -305,7 +338,7 @@ def ocrTifImageWithDetails(imageBase64_srt,useParagraph: bool = True, useWidth_t
             return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
         if imageBase64_srt is None:
             return {"Data": None, "ErrorMessage": "Geçersiz Image Datası", "Description": "", "Error": True}
-        ocrResult = eOcrEngine.OcrTiffImageWithDetails(imageBase64_srt)
+        ocrResult = eOcrEngine.OcrTiffImageWithDetails(imageBase64=imageBase64_srt, useParagraph=useParagraph, useWidth_ths=useWidth_ths)
         return {"Data": ocrResult, "ErrorMessage": "", "Description": "", "Error": False}
     except Exception as e:
         return {"Data": None, "ErrorMessage": str(e), "Description": "", "Error": True}
@@ -358,7 +391,7 @@ def semanticDataExistsRatioBert(data):
 def semanticDataExistsRatioLlama(data):
     global llama3BInstructHlp
     try:
-        if not appConfig.useLlama3BVision:
+        if not appConfig.useLlama:
             return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
         content = data.get("content")
         checkValues = data.get("checkValues")
@@ -443,7 +476,7 @@ def transcribeAudio(aoudioBase64_srt):
 #region llmaQuestionAnswer
 def llamaQuestionAnswer(content:str, quesiton:str)->str:
     try:
-        if not appConfig.useLlama3BVision:
+        if not appConfig.useLlama:
             return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
         result = llama3BInstructHlp.answer_question(content, quesiton)
         return {"Data": result, "ErrorMessage": "", "Description": "",
@@ -490,14 +523,34 @@ def trainBarcodeDetectModel(barcodeDir, nobarcodeDir):
 def detectBarcode(imageBase64_srt):
     global appConfig, barcodeDetectModelCount, brcPresenceClassifier
     try:
-        if not appConfig.useBarcodeDetectOperation or barcodeDetectModelCount == 0:
+        if appConfig.useBarcodeDetectOperation == False or barcodeDetectModelCount == 0:
             return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
         if imageBase64_srt is None:
             return {"Data": None, "ErrorMessage": "Geçersiz Image Datası", "Description": "", "Error": True}
-        found = data = brcPresenceClassifier.detect_on_page(imageBase64_srt)
+        found = data = brcPresenceClassifier.detect_on_page(imageBase64_srt,
+            return_locations=True,
+            verbose=True,
+            save_candidates=True,
+            candidate_dir="temp_candidates")
         return {"Data": {"Found" : found}, "ErrorMessage": "", "Description": "", "Error": False}
     except Exception as e:
         return {"Data": None, "ErrorMessage": str(e), "Description": "", "Error": True}
+#endregion
+
+#region qwenQuestionAnswer
+def qwenQuestionAnswer(content:str,schema:str, userPromt:str)->str:
+    try:
+        if not appConfig.useQWen:
+            return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
+        _schema = None
+        if schema != None:
+            _schema = json.loads(schema)
+        result = qwenHlp.extract_fields(image_input= content, max_new_tokens=300, schema=_schema, user_prompt=userPromt)
+        return {"Data": result, "ErrorMessage": "", "Description": "",
+                "Error": False}
+    except Exception as e:
+        return {"Data": None, "ErrorMessage": str(e), "Description": "", "Error": True}
+
 #endregion
 
 # def dataExistsRatioSpacy(data):
