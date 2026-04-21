@@ -1,8 +1,10 @@
 import os
 import gc
 import json
+import time
 import base64
 import threading
+import importlib.util
 from io import BytesIO
 from typing import Optional, Dict, Any, Union
 
@@ -10,7 +12,7 @@ import torch
 from PIL import Image, ImageOps, ImageFile
 from transformers import (
     AutoProcessor,
-    AutoModelForVision2Seq,
+    AutoModelForImageTextToText,
     BitsAndBytesConfig
 )
 
@@ -18,22 +20,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class QWenHelper:
-    """
-    Tek image -> JSON extraction için optimize edilmiş Qwen Vision helper.
-
-    Amaç:
-    - Modeli bir kez yüklemek
-    - Aynı instance ile tekrar tekrar inference yapmak
-    - 4-bit quantization kullanmak
-    - Gereksiz VRAM/CPU bellek baskısını azaltmak
-    - Taranmış dokümanlardan alan çıkarımı yapmak
-
-    Uygun modeller:
-    - Qwen/Qwen3-VL-30B-A3B-Instruct
-    - Qwen/Qwen3-VL-32B-Instruct
-    - Qwen/Qwen2.5-VL-32B-Instruct
-    """
-
     def __init__(
         self,
         model_path: str,
@@ -43,7 +29,8 @@ class QWenHelper:
         temperature: float = 0.0,
         do_sample: bool = False,
         use_flash_attention_if_available: bool = True,
-        auto_load: bool = True
+        auto_load: bool = True,
+        require_gpu: bool = True,
     ):
         self.model_path = model_path
         self.debug_mode = debug_mode
@@ -52,42 +39,127 @@ class QWenHelper:
         self.temperature = temperature
         self.do_sample = do_sample
         self.use_flash_attention_if_available = use_flash_attention_if_available
+        self.require_gpu = require_gpu
 
-        self.device = torch.device(
-            cuda_device if torch.cuda.is_available() else "cpu"
-        )
+        self.device = torch.device(cuda_device if torch.cuda.is_available() else "cpu")
 
         self.processor: Optional[AutoProcessor] = None
-        self.model: Optional[AutoModelForVision2Seq] = None
+        self.model = None
         self.is_loaded: bool = False
-
-        # Çok thread'li çağrılarda model.generate çakışmalarını azaltmak için
         self._lock = threading.RLock()
 
+        if self.require_gpu and not torch.cuda.is_available():
+            raise RuntimeError("CUDA bulunamadı. Kod GPU zorunlu modda çalıştırılıyor.")
+
         if self.debug_mode:
-            print(f"[INIT] device = {self.device}")
-            if torch.cuda.is_available():
-                try:
-                    print(f"[INIT] cuda device name = {torch.cuda.get_device_name(0)}")
-                except Exception:
-                    pass
+            self.debug_cuda_status(prefix="[INIT]")
 
         if auto_load:
             self.load_model()
 
     # ---------------------------------------------------------
+    # HELPERS
+    # ---------------------------------------------------------
+    def _has_flash_attn(self) -> bool:
+        return importlib.util.find_spec("flash_attn") is not None
+
+    def _resolve_cuda_index(self) -> int:
+        if not torch.cuda.is_available():
+            return -1
+
+        if isinstance(self.cuda_device, str) and self.cuda_device.startswith("cuda:"):
+            try:
+                idx = int(self.cuda_device.split(":")[1])
+                if 0 <= idx < torch.cuda.device_count():
+                    return idx
+            except Exception:
+                pass
+
+        return 0
+
+    def _get_best_attn_implementation(self) -> str:
+        if not torch.cuda.is_available():
+            return "eager"
+
+        if self.use_flash_attention_if_available and self._has_flash_attn():
+            return "flash_attention_2"
+
+        if hasattr(torch.nn.functional, "scaled_dot_product_attention"):
+            return "sdpa"
+
+        return "eager"
+
+    def _single_gpu_device_map(self):
+        if not torch.cuda.is_available():
+            return None
+        gpu_index = self._resolve_cuda_index()
+        return {"": gpu_index}
+
+    def _assert_model_on_gpu(self) -> None:
+        if self.model is None:
+            raise RuntimeError("Model yüklü değil.")
+
+        param_device = next(self.model.parameters()).device
+        if param_device.type != "cuda":
+            raise RuntimeError(f"Model GPU'da değil. Parametre device: {param_device}")
+
+        if hasattr(self.model, "hf_device_map"):
+            has_cpu = any(str(v).startswith("cpu") or str(v).startswith("disk")
+                          for v in self.model.hf_device_map.values())
+            if has_cpu:
+                raise RuntimeError(
+                    f"Model tamamen GPU'da değil. hf_device_map={self.model.hf_device_map}"
+                )
+
+    def _log_model_and_inputs(self, inputs: Dict[str, Any], prefix: str = "[DEBUG]") -> None:
+        if not self.debug_mode:
+            return
+
+        try:
+            model_device = next(self.model.parameters()).device if self.model is not None else "N/A"
+            print(f"{prefix} model_device = {model_device}")
+        except Exception as ex:
+            print(f"{prefix} model_device okunamadı: {ex}")
+
+        if hasattr(self.model, "hf_device_map"):
+            print(f"{prefix} hf_device_map = {self.model.hf_device_map}")
+
+        for k, v in inputs.items():
+            if hasattr(v, "device"):
+                print(f"{prefix} input[{k}] -> {v.device}")
+
+    # ---------------------------------------------------------
+    # DEBUG / STATUS
+    # ---------------------------------------------------------
+    def debug_cuda_status(self, prefix: str = "[CUDA]") -> None:
+        print(f"{prefix} torch.cuda.is_available() = {torch.cuda.is_available()}")
+        print(f"{prefix} torch.version.cuda = {torch.version.cuda}")
+        print(f"{prefix} device_count = {torch.cuda.device_count() if torch.cuda.is_available() else 0}")
+        print(f"{prefix} selected device = {self.device}")
+
+        if torch.cuda.is_available():
+            try:
+                idx = self._resolve_cuda_index()
+                print(f"{prefix} current_device_index = {idx}")
+                print(f"{prefix} device_name = {torch.cuda.get_device_name(idx)}")
+                total_vram_gb = torch.cuda.get_device_properties(idx).total_memory / (1024 ** 3)
+                print(f"{prefix} total_vram = {total_vram_gb:.2f} GB")
+                self.print_memory_stats(prefix=prefix)
+            except Exception as ex:
+                print(f"{prefix} gpu status okunamadı: {ex}")
+
+    # ---------------------------------------------------------
     # MODEL LOAD
     # ---------------------------------------------------------
     def load_model(self) -> None:
-        """
-        Model ve processor'ı bir kez yükler.
-        Tekrar çağrılırsa ikinci kez yüklemez.
-        """
         with self._lock:
             if self.is_loaded:
                 if self.debug_mode:
                     print("[LOAD] Model zaten yüklü.")
                 return
+
+            if self.require_gpu and not torch.cuda.is_available():
+                raise RuntimeError("GPU zorunlu fakat CUDA aktif değil.")
 
             if self.debug_mode:
                 print(f"[LOAD] Loading processor from: {self.model_path}")
@@ -97,46 +169,74 @@ class QWenHelper:
                 trust_remote_code=True
             )
 
-            quant_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type="nf4"
-            )
+            attn_impl = self._get_best_attn_implementation()
 
             model_kwargs = {
-                "quantization_config": quant_config,
                 "trust_remote_code": True,
-                "low_cpu_mem_usage": True
+                "low_cpu_mem_usage": True,
+                "attn_implementation": attn_impl,
             }
 
-            # CUDA varsa device_map otomatik bırakmak genelde daha güvenli.
-            # Tek GPU kullanacağın için auto çoğu durumda doğru davranır.
             if torch.cuda.is_available():
-                model_kwargs["device_map"] = "auto"
-                # Destek varsa flash attention açılabilir
-                if self.use_flash_attention_if_available:
-                    try:
-                        model_kwargs["attn_implementation"] = "flash_attention_2"
-                    except Exception:
-                        pass
+                quant_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                )
+                model_kwargs["quantization_config"] = quant_config
+                model_kwargs["device_map"] = self._single_gpu_device_map()
+                model_kwargs["dtype"] = torch.float16
             else:
-                model_kwargs["device_map"] = {"": "cpu"}
+                model_kwargs["dtype"] = torch.float32
 
             if self.debug_mode:
                 print(f"[LOAD] Loading vision model from: {self.model_path}")
+                print(f"[LOAD] attn_implementation = {attn_impl}")
+                print(f"[LOAD] flash_attn installed = {self._has_flash_attn()}")
+                print(f"[LOAD] device_map = {model_kwargs.get('device_map')}")
+                self.print_memory_stats(prefix="[LOAD-BEFORE]")
 
-            self.model = AutoModelForVision2Seq.from_pretrained(
-                self.model_path,
-                **model_kwargs
-            )
+            try:
+                self.model = AutoModelForImageTextToText.from_pretrained(
+                    self.model_path,
+                    **model_kwargs
+                )
+            except ValueError as ex:
+                msg = str(ex)
+                if "Some modules are dispatched on the CPU or the disk" in msg:
+                    raise RuntimeError(
+                        "Model tek GPU VRAM'ine tam sığmıyor. "
+                        "Tam GPU kullanım için daha küçük model, daha düşük çözünürlük "
+                        "ve daha düşük max_new_tokens kullan."
+                    ) from ex
+                raise
+            except ImportError as ex:
+                msg = str(ex).lower()
+                if "flashattention2" in msg or "flash_attn" in msg or "flash attention 2" in msg:
+                    if self.debug_mode:
+                        print("[LOAD] FlashAttention yok. eager fallback deneniyor...")
+                    model_kwargs["attn_implementation"] = "eager"
+                    self.model = AutoModelForImageTextToText.from_pretrained(
+                        self.model_path,
+                        **model_kwargs
+                    )
+                else:
+                    raise
+
+            if not torch.cuda.is_available():
+                self.model = self.model.to(self.device)
 
             self.model.eval()
             self.is_loaded = True
 
+            # Yükleme sonrası model gerçekten GPU'da mı?
+            if torch.cuda.is_available():
+                self._assert_model_on_gpu()
+
             if self.debug_mode:
                 print("[LOAD] Model loaded successfully.")
-                self.print_memory_stats()
+                self.print_memory_stats(prefix="[LOAD-AFTER]")
 
     # ---------------------------------------------------------
     # PUBLIC API
@@ -148,34 +248,6 @@ class QWenHelper:
         user_prompt: Optional[str] = None,
         max_new_tokens: Optional[int] = None
     ) -> Dict[str, Any]:
-        """
-        image_input:
-            - base64 string
-            - dosya yolu
-            - raw bytes
-
-        schema:
-            Beklenen JSON şeması. Örn:
-            {
-                "evrak_no": "",
-                "tarih": "",
-                "konu": "",
-                "gelen_kurum": "",
-                "giden_kurum": "",
-                "guven_skoru": 0.0
-            }
-
-        user_prompt:
-            Ek prompt override / detaylandırma
-
-        return:
-            {
-                "success": True/False,
-                "raw_text": "...",
-                "data": {...} | None,
-                "error": "..."
-            }
-        """
         with self._lock:
             self._ensure_loaded()
 
@@ -191,7 +263,7 @@ class QWenHelper:
                     {
                         "role": "user",
                         "content": [
-                            {"type": "image"},
+                            {"type": "image", "image": image},
                             {"type": "text", "text": prompt}
                         ]
                     }
@@ -199,25 +271,25 @@ class QWenHelper:
 
                 input_text = self.processor.apply_chat_template(
                     messages,
+                    tokenize=False,
                     add_generation_prompt=True
                 )
 
                 inputs = self.processor(
-                    images=image,
                     text=input_text,
-                    add_special_tokens=False,
+                    images=image,
                     return_tensors="pt"
                 )
 
                 model_device = self._get_model_device()
                 inputs = {
-                    k: v.to(model_device) if hasattr(v, "to") else v
+                    k: v.to(model_device, non_blocking=True) if hasattr(v, "to") else v
                     for k, v in inputs.items()
                 }
 
-                if self.debug_mode:
-                    print(f"[INFER] model_device = {model_device}")
-                    print(f"[INFER] max_new_tokens = {max_new_tokens or self.max_new_tokens}")
+                self._log_model_and_inputs(inputs, prefix="[EXTRACT]")
+                if torch.cuda.is_available():
+                    self.print_memory_stats(prefix="[EXTRACT-BEFORE]")
 
                 generation_kwargs = {
                     "max_new_tokens": max_new_tokens or self.max_new_tokens,
@@ -225,31 +297,30 @@ class QWenHelper:
                     "use_cache": True
                 }
 
-                # do_sample=False iken temperature vermemek daha doğru
                 if self.do_sample:
                     generation_kwargs["temperature"] = self.temperature
 
+                start = time.perf_counter()
                 with torch.inference_mode():
-                    output_ids = self.model.generate(
-                        **inputs,
-                        **generation_kwargs
-                    )
+                    output_ids = self.model.generate(**inputs, **generation_kwargs)
+                    if torch.cuda.is_available():
+                        torch.cuda.synchronize()
+                elapsed = time.perf_counter() - start
 
-                raw_text = self.processor.decode(
-                    output_ids[0],
-                    skip_special_tokens=True
-                ).strip()
-
+                raw_text = self._decode_generated_text(inputs, output_ids)
                 parsed = self._try_parse_json(raw_text)
 
-                result = {
+                if self.debug_mode:
+                    print(f"[EXTRACT] inference_time = {elapsed:.3f} sn")
+                    if torch.cuda.is_available():
+                        self.print_memory_stats(prefix="[EXTRACT-AFTER]")
+
+                return {
                     "success": parsed is not None,
                     "raw_text": raw_text,
                     "data": parsed,
                     "error": None if parsed is not None else "JSON parse edilemedi."
                 }
-
-                return result
 
             except Exception as ex:
                 return {
@@ -260,17 +331,14 @@ class QWenHelper:
                 }
 
             finally:
-                # inference sonrası geçici objeleri bırak
                 try:
                     del image
                 except Exception:
                     pass
-
                 try:
                     del inputs
                 except Exception:
                     pass
-
                 try:
                     del output_ids
                 except Exception:
@@ -284,10 +352,6 @@ class QWenHelper:
         question: str,
         max_new_tokens: Optional[int] = None
     ) -> Dict[str, Any]:
-        """
-        Serbest soru-cevap modu.
-        JSON parse zorlamaz.
-        """
         with self._lock:
             self._ensure_loaded()
 
@@ -302,7 +366,7 @@ class QWenHelper:
                     {
                         "role": "user",
                         "content": [
-                            {"type": "image"},
+                            {"type": "image", "image": image},
                             {"type": "text", "text": question}
                         ]
                     }
@@ -310,21 +374,25 @@ class QWenHelper:
 
                 input_text = self.processor.apply_chat_template(
                     messages,
+                    tokenize=False,
                     add_generation_prompt=True
                 )
 
                 inputs = self.processor(
-                    images=image,
                     text=input_text,
-                    add_special_tokens=False,
+                    images=image,
                     return_tensors="pt"
                 )
 
                 model_device = self._get_model_device()
                 inputs = {
-                    k: v.to(model_device) if hasattr(v, "to") else v
+                    k: v.to(model_device, non_blocking=True) if hasattr(v, "to") else v
                     for k, v in inputs.items()
                 }
+
+                self._log_model_and_inputs(inputs, prefix="[ASK]")
+                if torch.cuda.is_available():
+                    self.print_memory_stats(prefix="[ASK-BEFORE]")
 
                 generation_kwargs = {
                     "max_new_tokens": max_new_tokens or self.max_new_tokens,
@@ -335,16 +403,19 @@ class QWenHelper:
                 if self.do_sample:
                     generation_kwargs["temperature"] = self.temperature
 
+                start = time.perf_counter()
                 with torch.inference_mode():
-                    output_ids = self.model.generate(
-                        **inputs,
-                        **generation_kwargs
-                    )
+                    output_ids = self.model.generate(**inputs, **generation_kwargs)
+                    if torch.cuda.is_available():
+                        torch.cuda.synchronize()
+                elapsed = time.perf_counter() - start
 
-                raw_text = self.processor.decode(
-                    output_ids[0],
-                    skip_special_tokens=True
-                ).strip()
+                raw_text = self._decode_generated_text(inputs, output_ids)
+
+                if self.debug_mode:
+                    print(f"[ASK] inference_time = {elapsed:.3f} sn")
+                    if torch.cuda.is_available():
+                        self.print_memory_stats(prefix="[ASK-AFTER]")
 
                 return {
                     "success": True,
@@ -364,18 +435,26 @@ class QWenHelper:
                     del image
                 except Exception:
                     pass
-
                 try:
                     del inputs
                 except Exception:
                     pass
-
                 try:
                     del output_ids
                 except Exception:
                     pass
 
                 self.clear_memory()
+
+    def warmup(self) -> None:
+        if not torch.cuda.is_available():
+            print("[WARMUP] CUDA yok, warmup atlandı.")
+            return
+
+        dummy = Image.new("RGB", (256, 256), (255, 255, 255))
+        result = self.ask(dummy.tobytes(), "Bu görsel boş mu?", max_new_tokens=8)
+        if self.debug_mode:
+            print("[WARMUP] result =", result)
 
     # ---------------------------------------------------------
     # PROMPT / JSON
@@ -422,20 +501,14 @@ Dönüş şeması:
         return base_prompt
 
     def _try_parse_json(self, text: str) -> Optional[Dict[str, Any]]:
-        """
-        Model bazen JSON dışında metin dönebilir.
-        Önce direkt parse etmeyi dener, olmazsa ilk JSON bloğunu ayıklar.
-        """
         if not text:
             return None
 
-        # 1) Direkt parse
         try:
             return json.loads(text)
         except Exception:
             pass
 
-        # 2) ```json ... ``` bloğu
         import re
         fenced = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL | re.IGNORECASE)
         if fenced:
@@ -444,7 +517,6 @@ Dönüş şeması:
             except Exception:
                 pass
 
-        # 3) İlk { ... } bloğu
         bracket = re.search(r"(\{.*\})", text, re.DOTALL)
         if bracket:
             candidate = bracket.group(1).strip()
@@ -459,25 +531,20 @@ Dönüş şeması:
     # IMAGE HELPERS
     # ---------------------------------------------------------
     def _load_image(self, image_input: Union[str, bytes]) -> Image.Image:
-        """
-        image_input:
-        - dosya yolu
-        - base64 string
-        - bytes
-        """
         if isinstance(image_input, bytes):
             img = Image.open(BytesIO(image_input))
             return self._normalize_image(img)
 
-        if not isinstance(image_input, str):
-            raise TypeError("image_input str veya bytes olmalı.")
+        if isinstance(image_input, Image.Image):
+            return self._normalize_image(image_input)
 
-        # Dosya yolu ise
+        if not isinstance(image_input, str):
+            raise TypeError("image_input str, bytes veya PIL.Image olmalı.")
+
         if os.path.exists(image_input):
             img = Image.open(image_input)
             return self._normalize_image(img)
 
-        # Base64 ise
         try:
             raw = base64.b64decode(image_input)
             img = Image.open(BytesIO(raw))
@@ -486,12 +553,14 @@ Dönüş şeması:
             raise ValueError(f"Görüntü yüklenemedi. Geçersiz path/base64 olabilir. Detay: {ex}")
 
     def _normalize_image(self, img: Image.Image) -> Image.Image:
-        """
-        Taranmış belgeler için güvenli normalize.
-        - EXIF orientation düzeltir
-        - RGB'a çevirir
-        """
         img = ImageOps.exif_transpose(img)
+
+        # 8 GB GPU için çok büyük görselleri küçült
+        max_side = 1280
+        w, h = img.size
+        if max(w, h) > max_side:
+            ratio = max_side / float(max(w, h))
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
 
         if img.mode not in ("RGB", "RGBA"):
             img = img.convert("RGB")
@@ -502,14 +571,25 @@ Dönüş şeması:
 
         return img
 
+    def _decode_generated_text(self, inputs, output_ids) -> str:
+        if "input_ids" in inputs:
+            input_len = inputs["input_ids"].shape[1]
+            generated_ids = output_ids[:, input_len:]
+        else:
+            generated_ids = output_ids
+
+        text = self.processor.batch_decode(
+            generated_ids,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=True
+        )[0]
+
+        return text.strip()
+
     # ---------------------------------------------------------
     # MEMORY / DEVICE
     # ---------------------------------------------------------
     def clear_memory(self) -> None:
-        """
-        Inference sonrası cache temizliği.
-        Modeli RAM/VRAM'den atmaz; sadece geçici allocation baskısını azaltır.
-        """
         gc.collect()
 
         if torch.cuda.is_available():
@@ -517,26 +597,17 @@ Dönüş şeması:
                 torch.cuda.synchronize()
             except Exception:
                 pass
-
             try:
                 torch.cuda.empty_cache()
             except Exception:
                 pass
-
             try:
                 torch.cuda.ipc_collect()
             except Exception:
                 pass
 
     def unload(self) -> None:
-        """
-        Modeli tamamen bellekten at.
-        Uygulama kapanırken veya model değiştirirken kullan.
-        """
         with self._lock:
-            if self.debug_mode:
-                print("[UNLOAD] Releasing model and processor...")
-
             try:
                 del self.model
             except Exception:
@@ -550,38 +621,33 @@ Dönüş şeması:
             self.model = None
             self.processor = None
             self.is_loaded = False
-
             self.clear_memory()
 
     def reload_model(self, new_model_path: Optional[str] = None) -> None:
-        """
-        Model değiştirmek veya temiz reload yapmak için.
-        """
         with self._lock:
             self.unload()
-
             if new_model_path:
                 self.model_path = new_model_path
-
             self.load_model()
 
-    def print_memory_stats(self) -> None:
+    def print_memory_stats(self, prefix: str = "[MEMORY]") -> None:
         if not torch.cuda.is_available():
-            print("[MEMORY] CUDA yok.")
+            print(f"{prefix} CUDA yok.")
             return
 
         try:
-            allocated = torch.cuda.memory_allocated() / (1024 ** 3)
-            reserved = torch.cuda.memory_reserved() / (1024 ** 3)
-            max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 3)
+            idx = self._resolve_cuda_index()
+            allocated = torch.cuda.memory_allocated(idx) / (1024 ** 3)
+            reserved = torch.cuda.memory_reserved(idx) / (1024 ** 3)
+            max_allocated = torch.cuda.max_memory_allocated(idx) / (1024 ** 3)
 
             print(
-                f"[MEMORY] allocated={allocated:.2f} GB | "
+                f"{prefix} allocated={allocated:.2f} GB | "
                 f"reserved={reserved:.2f} GB | "
                 f"max_allocated={max_allocated:.2f} GB"
             )
         except Exception as ex:
-            print(f"[MEMORY] okunamadı: {ex}")
+            print(f"{prefix} okunamadı: {ex}")
 
     def _get_model_device(self) -> torch.device:
         if self.model is None:

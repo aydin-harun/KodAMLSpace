@@ -257,6 +257,29 @@ body {
                 </div>
             </div>
         </div>
+        <!-- Qwen Operations -->
+        <div class="accordion-item bg-transparent border-0">
+            <h2 class="accordion-header">
+                <button
+                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/qwenquestionanswer' %}collapsed{% endif %}"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#qwenOps"
+                    aria-expanded="{% if request.path == '/qwenquestionanswer' %}true{% else %}false{% endif %}">
+                    🧠 Qwen Operations
+                </button>
+            </h2>
+            <div
+                id="qwenOps"
+                class="accordion-collapse collapse {% if request.path == '/qwenquestionanswer' %}show{% endif %}"
+                data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body p-0">
+                    <a href="{{ url_for('qwen_question_answer_page') }}" class="{% if request.path == '/qwenquestionanswer' %}active{% endif %}">
+                        🤖 Qwen Question Answer
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -163,7 +163,14 @@ def loadModels():
             print("---> Sklearn, Barkod Tespiti")
 
         if appConfig.useQWen:
-            qwenHlp = QWenHelper(model_path=appConfig.qwenModelPath,debug_mode=appConfig.debugMode)
+            qwenHlp = QWenHelper(
+                model_path=appConfig.qwenModelPath,
+                debug_mode=appConfig.debugMode,
+                cuda_device="cuda:0",
+                max_new_tokens=64,
+                do_sample=False,
+                require_gpu=True
+            )
             print("✅✅ QWen Model Yüklendi- Llama")
     except Exception as e:
         raise e

@@ -325,13 +325,18 @@ def api_train_barcode_detect_model():
         return jData , 400 # result, 400
     return  {"Success": True, "Code": 200, "Data": str(result), "Description": "Operation Successful"}, 200
 
+@app.route("/qwenquestionanswer")
+def qwen_question_answer_page():
+    return render_template("qwen_question_answer.html")
+
 @app.route('/api/qwenQuestionAnswer', methods=['POST'])
 def getQWenQuestionAnswer():
     reqContent = request.get_json()
     if reqContent is None:
         jData = {"Success": False, "Code": 400, "Data": None, "Description":"Invalid Parameters" }
         return jsonify(jData), 400  # result, 400
-    result = imgProcessBS.qwenQuestionAnswer(content=reqContent.get("content"),schema=reqContent.get("_schema"), userPromt=reqContent.get("userPrompt"))
+    schema_dict = reqContent.get("_schema")
+    result = imgProcessBS.qwenQuestionAnswer(content=reqContent.get("content"),schema=json.dumps(schema_dict, ensure_ascii=False), userPromt=reqContent.get("userPrompt"))
     if result.get("Error"):
         jData = {"Success": False, "Code": 400, "Data": None, "Description": result.get("ErrorMessage")}
         return jsonify(jData), 400  # result, 400
