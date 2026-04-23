@@ -9,6 +9,23 @@ app = Flask(__name__)
 
 imgProcessBS.loadAppConfig()
 
+@app.route("/api/getServiceDashboard", methods=["GET"])
+def api_get_service_dashboard():
+    try:
+        return jsonify({
+            "Success": True,
+            "Code": 200,
+            "Data": imgProcessBS.getServiceDashboardJson(),
+            "Description": "Operation Successful"
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "Success": False,
+            "Code": 500,
+            "Data": None,
+            "Description": str(e)
+        }), 500
+
 @app.route("/")
 def index():
     imgProcessBS.logger.info("Root endpoint called")
@@ -336,7 +353,10 @@ def getQWenQuestionAnswer():
         jData = {"Success": False, "Code": 400, "Data": None, "Description":"Invalid Parameters" }
         return jsonify(jData), 400  # result, 400
     schema_dict = reqContent.get("_schema")
-    result = imgProcessBS.qwenQuestionAnswer(content=reqContent.get("content"),schema=json.dumps(schema_dict, ensure_ascii=False), userPromt=reqContent.get("userPrompt"))
+    result = imgProcessBS.qwenQuestionAnswer(content=reqContent.get("content"),
+                                             schema=json.dumps(schema_dict, ensure_ascii=False),
+                                             userPromt=reqContent.get("userPrompt"),
+                                             question=reqContent.get("question"))
     if result.get("Error"):
         jData = {"Success": False, "Code": 400, "Data": None, "Description": result.get("ErrorMessage")}
         return jsonify(jData), 400  # result, 400

@@ -11,7 +11,7 @@
   "bertModelPath": "C:\\Users\\aydin\\Documents\\PythonProjects\\KodAMLSpace\\mlModels\\bertClassificaitonModelPath\\bertPageClassifier.pkl",
   "useBertModelOperation": false,
   "useGensimModelOperation": false,
-  "useEasyOcrOperation": false,
+  "useEasyOcrOperation": true,
   "useEmptyPageOperation": false,
   "useRapifFuzzOperation": false,
   "debugMode": true,
@@ -36,5 +36,5 @@
   },
   "useQWen": true,
   "qwenModelType": 1,
-  "qwenModelPath": "Qwen/Qwen3-VL-8B-Instruct"
+  "qwenModelPath": "C:\\Users\\aydin\\.cache\\huggingface\\hub\\models--Qwen--Qwen3-VL-8B-Instruct\\snapshots\\0c351dd01ed87e9c1b53cbc748cba10e6187ff3b"
 }

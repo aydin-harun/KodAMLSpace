@@ -1,190 +1,425 @@
+
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
+{% block page_title %}KodA AI Dashboard{% endblock %}
+{% block page_subtitle %}Frequently used tools, model operations and document intelligence flows at a glance.{% endblock %}
 {% block content %}
 
-<div class="row">
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    ⚙️
-                </div>
-                <h4>Train Empty Page Model</h4>
-                <p>Train the empty page detection model.</p>
-                <a href="{{ url_for('train_page') }}" class="btn btn-primary">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    🔍
-                </div>
-                <h4>Detect Empty Page</h4>
-                <p>Detect if a page is empty or filled.</p>
-                <a href="{{ url_for('detect_empty_page') }}" class="btn btn-success">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    📄
-                </div>
-                <h4>OCR TIF Image</h4>
-                <p>Run OCR on a TIF image.</p>
-                <a href="{{ url_for('ocr_page') }}" class="btn btn-warning text-white">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    🧩
-                </div>
-                <h4>OCR TIF Image (With Details)</h4>
-                <p>Run OCR on a TIF image with extra parameters.</p>
-                <a href="{{ url_for('ocr_tif_image_with_details_page') }}" class="btn btn-warning text-white">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    📋
-                </div>
-                <h4>Classifications</h4>
-                <p>List and manage classification types.</p>
-                <a href="{{ url_for('classifications_page') }}" class="btn btn-info text-white">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    🧪
-                </div>
-                <h4>Train Classification</h4>
-                <p>Train classification with OCR data samples.</p>
-                <a href="{{ url_for('train_classification_page') }}" class="btn btn-secondary text-white">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    🧾
-                </div>
-                <h4>Get Classification</h4>
-                <p>Get classification for OCR content.</p>
-                <a href="{{ url_for('get_classification_page') }}" class="btn btn-dark text-white">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    ✅
-                </div>
-                <h4>Check Data Exists</h4>
-                <p>Check if given values exist in OCR result.</p>
-                <a href="{{ url_for('check_data_exists_page') }}" class="btn btn-success">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    🤖
-                </div>
-                <h4>BERT Classification Train</h4>
-                <p>Train BERT document classification model.</p>
-                <a href="{{ url_for('bert_classification_train_page') }}" class="btn btn-success">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    🔍
-                </div>
-                <h4>BERT Classification Detect</h4>
-                <p>Detect document classification using BERT.</p>
-                <a href="{{ url_for('bert_classification_detect_page') }}" class="btn btn-success">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    🎤
-                </div>
-                <h4>Audio Transcription</h4>
-                <p>Transcribe speech from a WAV audio file.</p>
-                <a href="{{ url_for('audio_transcription_page') }}" class="btn btn-success">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    🦙
-                </div>
-                <h4>LLaMA Question Answer</h4>
-                <p>Ask a question about the given content using LLaMA.</p>
-                <a href="{{ url_for('llama_question_answer_page') }}" class="btn btn-success">Go</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    📷
-                </div>
-                <h4>Barcode Detection</h4>
-                <p>Detect barcodes in image files.</p>
-                <a href="{{ url_for('barcode_detect_page') }}" class="btn btn-success text-white">Go</a>
-            </div>
+<style>
+.hero-grid{
+    display:grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap:20px;
+    margin-bottom:24px;
+}
+.hero-card,
+.summary-card,
+.tool-card{
+    background:#fff;
+    border:1px solid rgba(20,108,67,.08);
+    border-radius:22px;
+    box-shadow:0 8px 24px rgba(16, 62, 38, .08);
+}
+.hero-card{
+    padding:28px;
+    background:
+        radial-gradient(circle at top right, rgba(25,135,84,.14), transparent 28%),
+        linear-gradient(180deg,#ffffff 0%,#fbfdfb 100%);
+}
+.hero-card h2{
+    font-size:2rem;
+    font-weight:700;
+    margin-bottom:10px;
+}
+.hero-card p{
+    color:#607168;
+    font-size:1rem;
+    max-width:700px;
+    margin-bottom:18px;
+}
+.hero-actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.quick-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    padding:11px 14px;
+    border-radius:999px;
+    text-decoration:none;
+    font-weight:600;
+    border:1px solid rgba(20,108,67,.10);
+    background:#fff;
+    color:#146c43;
+}
+.quick-pill:hover{
+    background:#f2faf5;
+    color:#146c43;
+}
+.summary-card{
+    padding:24px;
+}
+.summary-card h5{
+    margin-bottom:18px;
+    font-weight:700;
+}
+.summary-list{
+    display:grid;
+    gap:12px;
+}
+.summary-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px;
+    border-radius:16px;
+    background:#f7fbf8;
+    border:1px solid rgba(20,108,67,.06);
+}
+.summary-item span:first-child{
+    color:#607168;
+}
+.section-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin:0 0 14px 0;
+}
+.section-title h3{
+    margin:0;
+    font-size:1.15rem;
+    font-weight:700;
+}
+.section-title p{
+    margin:0;
+    color:#6c7a72;
+    font-size:.92rem;
+}
+.tool-grid{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:18px;
+}
+.tool-card{
+    padding:20px;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    height:100%;
+}
+.tool-card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 12px 28px rgba(16, 62, 38, .12);
+    border-color:rgba(20,108,67,.18);
+}
+.tool-icon{
+    width:52px;
+    height:52px;
+    border-radius:16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.45rem;
+    margin-bottom:14px;
+}
+.tool-card h4{
+    font-size:1.05rem;
+    font-weight:700;
+    margin-bottom:8px;
+}
+.tool-card p{
+    color:#64746b;
+    min-height:48px;
+    margin-bottom:14px;
+}
+.tool-card .btn{
+    border-radius:12px;
+    padding:.55rem .9rem;
+    font-weight:600;
+}
+.bg-soft-green{ background:#e9f7ef; color:#146c43; }
+.bg-soft-yellow{ background:#fff7df; color:#a96a00; }
+.bg-soft-blue{ background:#ebf5ff; color:#0a58ca; }
+.bg-soft-purple{ background:#f3ecff; color:#6f42c1; }
+.bg-soft-red{ background:#fff0f0; color:#b02a37; }
+.bg-soft-dark{ background:#eef3f1; color:#24342b; }
+
+@media (max-width: 1199.98px){
+    .tool-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .hero-grid{ grid-template-columns:1fr; }
+}
+@media (max-width: 767.98px){
+    .tool-grid{ grid-template-columns:1fr; }
+    .hero-card h2{ font-size:1.55rem; }
+}
+</style>
+
+<div class="hero-grid">
+    <div class="hero-card">
+        <h2>Welcome to KodA AI</h2>
+        <p>
+            Manage OCR, classification, question answering, audio transcription, barcode detection and model training
+            from a cleaner and more modern dashboard.
+        </p>
+        <div class="hero-actions">
+            <a class="quick-pill" href="{{ url_for('ocr_page') }}">📄 OCR TIF Image</a>
+            <a class="quick-pill" href="{{ url_for('bert_classification_train_page') }}">🤖 Train BERT</a>
+            <a class="quick-pill" href="{{ url_for('qwen_question_answer_page') }}">🧠 Qwen QA</a>
+            <a class="quick-pill" href="{{ url_for('barcode_detect_page') }}">📷 Barcode Detect</a>
         </div>
     </div>
 
-    <div class="col-md-4 mb-4">
-        <div class="card shadow-sm">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    ⚙️
-                </div>
-                <h4>Train Barcode Model</h4>
-                <p>Train model for barcode detection.</p>
-                <a href="{{ url_for('train_barcode_detect_model_page') }}" class="btn btn-primary text-white">Go</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4 mb-4">
-    <div class="card shadow-sm">
-        <div class="card-body text-center">
-            <div class="mb-3">
-                🧠
-            </div>
-            <h4>Qwen Question Answer</h4>
-            <p>Extract structured data using Qwen model.</p>
-            <a href="{{ url_for('qwen_question_answer_page') }}" class="btn btn-success">Go</a>
+    <div class="summary-card">
+        <h5>Quick Groups</h5>
+        <div class="summary-list">
+            <div class="summary-item"><span>Empty Page Tools</span><strong>2</strong></div>
+            <div class="summary-item"><span>OCR Tools</span><strong>2</strong></div>
+            <div class="summary-item"><span>Classification Tools</span><strong>6</strong></div>
+            <div class="summary-item"><span>Other AI Tools</span><strong>5</strong></div>
         </div>
     </div>
 </div>
+
+<div class="section-title">
+    <div>
+        <h3>Main Tools</h3>
+        <p>Frequently used operations for documents and AI workflows</p>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+                    <div>
+                        <h4 class="mb-1">Service Dashboard</h4>
+                        <div class="text-muted small">Loaded models and active modules</div>
+                    </div>
+                    <button id="refreshDashboardBtn" class="btn btn-sm btn-success">Refresh</button>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <div class="p-3 rounded bg-light border">
+                            <div class="small text-muted">Enabled Modules</div>
+                            <div id="dashEnabledModules" class="fs-4 fw-bold text-success">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 rounded bg-light border">
+                            <div class="small text-muted">Loaded Models</div>
+                            <div id="dashLoadedModels" class="fs-4 fw-bold text-success">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 rounded bg-light border">
+                            <div class="small text-muted">Generated At</div>
+                            <div id="dashGeneratedAt" class="small fw-bold">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="p-3 rounded bg-light border">
+                            <div class="small text-muted">Status</div>
+                            <div id="dashStatus" class="fs-6 fw-bold text-success">Ready</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3" id="dashboardModuleCards">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="tool-grid">
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-blue">⚙️</div>
+        <h4>Train Empty Page Model</h4>
+        <p>Train the empty page detection model.</p>
+        <a href="{{ url_for('train_page') }}" class="btn btn-primary">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-green">🔍</div>
+        <h4>Detect Empty Page</h4>
+        <p>Detect if a page is empty or filled.</p>
+        <a href="{{ url_for('detect_empty_page') }}" class="btn btn-success">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-yellow">📄</div>
+        <h4>OCR TIF Image</h4>
+        <p>Run OCR on a TIF image.</p>
+        <a href="{{ url_for('ocr_page') }}" class="btn btn-warning text-white">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-yellow">🧩</div>
+        <h4>OCR TIF Image (With Details)</h4>
+        <p>Run OCR on a TIF image with extra parameters.</p>
+        <a href="{{ url_for('ocr_tif_image_with_details_page') }}" class="btn btn-warning text-white">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-blue">📋</div>
+        <h4>Classifications</h4>
+        <p>List and manage classification types.</p>
+        <a href="{{ url_for('classifications_page') }}" class="btn btn-info text-white">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-dark">🧪</div>
+        <h4>Train Classification</h4>
+        <p>Train classification with OCR data samples.</p>
+        <a href="{{ url_for('train_classification_page') }}" class="btn btn-secondary text-white">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-dark">🧾</div>
+        <h4>Get Classification</h4>
+        <p>Get classification for OCR content.</p>
+        <a href="{{ url_for('get_classification_page') }}" class="btn btn-dark text-white">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-green">✅</div>
+        <h4>Check Data Exists</h4>
+        <p>Check if given values exist in OCR result.</p>
+        <a href="{{ url_for('check_data_exists_page') }}" class="btn btn-success">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-green">🤖</div>
+        <h4>BERT Classification Train</h4>
+        <p>Train BERT document classification model.</p>
+        <a href="{{ url_for('bert_classification_train_page') }}" class="btn btn-success">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-green">🔍</div>
+        <h4>BERT Classification Detect</h4>
+        <p>Detect document classification using BERT.</p>
+        <a href="{{ url_for('bert_classification_detect_page') }}" class="btn btn-success">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-green">🎤</div>
+        <h4>Audio Transcription</h4>
+        <p>Transcribe speech from a WAV audio file.</p>
+        <a href="{{ url_for('audio_transcription_page') }}" class="btn btn-success">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-green">🦙</div>
+        <h4>LLaMA Question Answer</h4>
+        <p>Ask a question about the given content using LLaMA.</p>
+        <a href="{{ url_for('llama_question_answer_page') }}" class="btn btn-success">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-green">📷</div>
+        <h4>Barcode Detection</h4>
+        <p>Detect barcodes in image files.</p>
+        <a href="{{ url_for('barcode_detect_page') }}" class="btn btn-success text-white">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-blue">⚙️</div>
+        <h4>Train Barcode Model</h4>
+        <p>Train model for barcode detection.</p>
+        <a href="{{ url_for('train_barcode_detect_model_page') }}" class="btn btn-primary text-white">Go</a>
+    </div>
+
+    <div class="tool-card">
+        <div class="tool-icon bg-soft-green">🧠</div>
+        <h4>Qwen Question Answer</h4>
+        <p>Extract structured data using Qwen model.</p>
+        <a href="{{ url_for('qwen_question_answer_page') }}" class="btn btn-success">Go</a>
+    </div>
+
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+function renderDashboardCard(title, moduleData) {
+    const details = moduleData.details || {};
+
+    let detailsHtml = "";
+    Object.keys(details).forEach(key => {
+        const val = Array.isArray(details[key])
+            ? details[key].join(", ")
+            : JSON.stringify(details[key]).replace(/^"|"$/g, "");
+        detailsHtml += `<div class="small text-muted"><strong>${key}:</strong> ${val}</div>`;
+    });
+
+    return `
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">${title}</h6>
+                        <span class="badge ${moduleData.enabled ? 'bg-success' : 'bg-secondary'}">
+                            ${moduleData.enabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="small text-muted">Loaded Model Count:</span>
+                        <div class="fw-bold fs-5">${moduleData.loadedModelCount ?? 0}</div>
+                    </div>
+                    ${detailsHtml}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function loadServiceDashboard() {
+    fetch("/api/getServiceDashboard")
+        .then(res => res.json())
+        .then(resp => {
+            if (!resp.Success) {
+                document.getElementById("dashStatus").textContent = "Error";
+                document.getElementById("dashStatus").className = "fs-6 fw-bold text-danger";
+                return;
+            }
+
+            const data = resp.Data || {};
+            const summary = data.summary || {};
+            const modules = data.modules || {};
+
+            document.getElementById("dashEnabledModules").textContent = summary.enabledModuleCount ?? 0;
+            document.getElementById("dashLoadedModels").textContent = summary.loadedModelTotal ?? 0;
+            document.getElementById("dashGeneratedAt").textContent = data.generatedAt || "-";
+            document.getElementById("dashStatus").textContent = data.error ? "Warning" : "Ready";
+            document.getElementById("dashStatus").className = data.error
+                ? "fs-6 fw-bold text-warning"
+                : "fs-6 fw-bold text-success";
+
+            const container = document.getElementById("dashboardModuleCards");
+            container.innerHTML = "";
+
+            Object.keys(modules).forEach(key => {
+                container.innerHTML += renderDashboardCard(key, modules[key]);
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById("dashStatus").textContent = "Error";
+            document.getElementById("dashStatus").className = "fs-6 fw-bold text-danger";
+        });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    loadServiceDashboard();
+
+    const btn = document.getElementById("refreshDashboardBtn");
+    if (btn) {
+        btn.addEventListener("click", loadServiceDashboard);
+    }
+});
+</script>
 {% endblock %}

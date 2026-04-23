@@ -244,7 +244,8 @@ class QWenHelper:
     def extract_fields(
         self,
         image_input: Union[str, bytes],
-        schema: Optional[Dict[str, Any]] = None,
+        question:str,
+        schema: Optional[Dict[str, Any]],
         user_prompt: Optional[str] = None,
         max_new_tokens: Optional[int] = None
     ) -> Dict[str, Any]:
@@ -257,7 +258,7 @@ class QWenHelper:
 
             try:
                 image = self._load_image(image_input)
-                prompt = self._build_prompt(schema=schema, user_prompt=user_prompt)
+                prompt = self._build_prompt(schema=schema, user_prompt=user_prompt, question=question)
 
                 messages = [
                     {
@@ -461,39 +462,29 @@ class QWenHelper:
     # ---------------------------------------------------------
     def _build_prompt(
         self,
-        schema: Optional[Dict[str, Any]] = None,
+        question : str,
+        schema: Optional[Dict[str, Any]],
         user_prompt: Optional[str] = None
     ) -> str:
-        if schema is None:
-            schema = {
-                "evrak_no": "",
-                "tarih": "",
-                "konu": "",
-                "gelen_kurum": "",
-                "giden_kurum": "",
-                "sayilar": [],
-                "guven_skoru": 0.0
-            }
+        # if schema is None:
+        #     schema = {
+        #         "evrak_no": "",
+        #         "tarih": "",
+        #         "konu": "",
+        #         "hangi_kurumdan_geliyor": "",
+        #         "hangi_kuruma_gidiyor": "",
+        #         "sayilar": [],
+        #         "guven_skoru": 0.0
+        #     }
 
         schema_json = json.dumps(schema, ensure_ascii=False, indent=2)
 
         base_prompt = f"""
-Aşağıdaki taranmış belge görüntüsünü incele.
-
-Görev:
-- Belgeden alan çıkarımı yap.
-- Sadece geçerli JSON döndür.
-- JSON dışında hiçbir açıklama yazma.
-- Okunamayan veya bulunamayan alanları null yap.
-- Tahmin etme, sadece görüntüde açıkça görülen bilgiyi yaz.
-- Birden fazla aday varsa en güçlü adayı ana alana yaz, diğerlerini "alternatives" altında listele.
-- Tarihi mümkünse standart biçimde yaz.
-- Kurum adlarını mümkün olduğunca tam çıkar.
-- Belgedeki önemli sayı, tarih, konu, gelen kurum, giden kurum gibi alanları bul.
-
-Dönüş şeması:
-{schema_json}
-""".strip()
+            {question}
+            
+            Dönüş şeması:
+            {schema_json}
+            """.strip()
 
         if user_prompt:
             return f"{base_prompt}\n\nEk talimat:\n{user_prompt}"

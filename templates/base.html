@@ -1,313 +1,496 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}{% endblock %} - Empty Page Detector</title>
+<title>{% block title %}{% endblock %} - KodA AI</title>
 <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/dataTables.bootstrap5.min.css') }}" rel="stylesheet"/>
 <script src="{{ url_for('static', filename='js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dataTables.bootstrap5.min.js') }}"></script>
 
 <style>
-body {
-    overflow-x: hidden;
+:root{
+    --koda-green:#198754;
+    --koda-green-dark:#146c43;
+    --koda-green-soft:#e9f7ef;
+    --koda-border:#dfe7e2;
+    --koda-text:#1f2d25;
+    --koda-muted:#6c7a72;
+    --sidebar-width: 300px;
+    --topbar-height: 72px;
+    --shadow-soft: 0 14px 32px rgba(10, 61, 35, .08);
+    --shadow-card: 0 8px 24px rgba(16, 62, 38, .08);
+    --radius-xl: 22px;
+    --radius-lg: 18px;
+    --radius-md: 14px;
 }
-.sidebar {
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 250px;
-    background-color: #198754;
-    padding-top: 20px;
-    transition: all 0.3s;
-    z-index: 1030;
+*{ box-sizing:border-box; }
+html,body{ min-height:100%; }
+body{
+    margin:0;
+    color:var(--koda-text);
+    background:
+        radial-gradient(circle at top right, rgba(25,135,84,.06), transparent 24%),
+        linear-gradient(180deg, #f7fbf8 0%, #f3f7f4 100%);
+    overflow-x:hidden;
+    font-family: "Segoe UI", Arial, sans-serif;
 }
-.sidebar.collapsed {
-    left: -250px;
+.sidebar{
+    position:fixed;
+    top:0;
+    left:0;
+    width:var(--sidebar-width);
+    height:100vh;
+    padding:18px 16px 20px 16px;
+    background:linear-gradient(180deg, #1b8c58 0%, #146c43 100%);
+    color:#fff;
+    border-right:1px solid rgba(255,255,255,.08);
+    box-shadow: 10px 0 30px rgba(11, 72, 44, .14);
+    transition: transform .28s ease;
+    z-index:1035;
+    overflow-y:auto;
 }
-.sidebar-toggle {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 1040;
+.sidebar.collapsed{
+    transform:translateX(calc(-1 * var(--sidebar-width)));
 }
-.sidebar a {
-    color: white;
-    display: block;
-    padding: 10px 20px;
-    text-decoration: none;
+.sidebar-brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:8px 10px 18px 10px;
+    margin-bottom:8px;
+    border-bottom:1px solid rgba(255,255,255,.14);
 }
-.sidebar a.active, .sidebar a:hover {
-    background-color: #146c43;
+.brand-badge{
+    width:44px;
+    height:44px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(255,255,255,.14);
+    backdrop-filter: blur(8px);
+    font-size:22px;
 }
-.main-content {
-    margin-left: 260px;
-    padding: 20px;
-    transition: margin-left 0.3s;
+.brand-text h4{
+    margin:0;
+    font-size:1.1rem;
+    font-weight:700;
+    letter-spacing:.2px;
 }
-.main-content.full {
-    margin-left: 10px;
+.brand-text span{
+    display:block;
+    font-size:.82rem;
+    color:rgba(255,255,255,.78);
 }
-.loader {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 9999;
+.sidebar-toggle{
+    position:fixed;
+    top:16px;
+    left:18px;
+    z-index:1045;
+    width:44px;
+    height:44px;
+    border:none;
+    border-radius:14px;
+    background:#fff;
+    color:var(--koda-green-dark);
+    box-shadow: var(--shadow-soft);
+    font-size:1.05rem;
 }
-.accordion-button:not(.collapsed) {
-    color: #fff;
-    background-color: #157347; /* yeşil ton */
-    box-shadow: inset 0 calc(-1 * var(--bs-accordion-border-width)) 0 rgba(0,0,0,.125);
-    transform: none;
+.sidebar-home{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    color:#fff;
+    text-decoration:none;
+    padding:12px 14px;
+    margin:10px 0 14px 0;
+    border-radius:14px;
+    transition: background .2s ease, transform .2s ease;
+}
+.sidebar-home:hover,
+.sidebar-home.active{
+    color:#fff;
+    background:rgba(255,255,255,.13);
+    transform:translateX(2px);
+}
+.sidebar-section-label{
+    margin:10px 8px 8px;
+    font-size:.74rem;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,.72);
+}
+.sidebar .accordion{
+    --bs-accordion-bg: transparent;
+    --bs-accordion-border-color: transparent;
+    --bs-accordion-btn-focus-box-shadow:none;
+}
+.sidebar .accordion-item{
+    background:transparent;
+    border:none;
+    margin-bottom:8px;
+}
+.sidebar .accordion-button{
+    border:none;
+    border-radius:14px !important;
+    background:transparent !important;
+    color:#fff !important;
+    font-weight:600;
+    padding:13px 14px;
+    box-shadow:none !important;
+}
+.sidebar .accordion-button::after{
+    filter: brightness(0) invert(1);
+    opacity:.9;
+}
+.sidebar .accordion-button:hover,
+.sidebar .accordion-button:not(.collapsed){
+    background:rgba(255,255,255,.12) !important;
+}
+.sidebar .accordion-body{
+    padding:6px 0 2px 0 !important;
+}
+.sidebar a.menu-link{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    color:rgba(255,255,255,.92);
+    text-decoration:none;
+    padding:10px 14px 10px 18px;
+    margin:4px 0;
+    border-radius:12px;
+    font-size:.95rem;
+    transition: background .2s ease, transform .2s ease, color .2s ease;
+}
+.sidebar a.menu-link:hover,
+.sidebar a.menu-link.active{
+    color:#fff;
+    background:rgba(255,255,255,.14);
+    transform:translateX(2px);
+}
+.sidebar .menu-emoji{
+    width:22px;
+    text-align:center;
+    opacity:.95;
+}
+.main-shell{
+    margin-left:var(--sidebar-width);
+    min-height:100vh;
+    transition: margin-left .28s ease;
+}
+.main-shell.full{
+    margin-left:0;
+}
+.topbar{
+    position:sticky;
+    top:0;
+    z-index:1020;
+    height:var(--topbar-height);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 24px 18px 84px;
+    background:rgba(247, 251, 248, .88);
+    backdrop-filter: blur(12px);
+    border-bottom:1px solid rgba(20,108,67,.08);
+}
+.topbar-title h1{
+    margin:0;
+    font-size:1.45rem;
+    font-weight:700;
+}
+.topbar-title p{
+    margin:3px 0 0;
+    color:var(--koda-muted);
+    font-size:.92rem;
+}
+.topbar-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:#fff;
+    color:var(--koda-green-dark);
+    border:1px solid rgba(20,108,67,.10);
+    border-radius:999px;
+    padding:10px 14px;
+    font-weight:600;
+    box-shadow: var(--shadow-soft);
+}
+.content-wrap{
+    padding:24px;
+}
+.page-panel{
+    background:rgba(255,255,255,.72);
+    border:1px solid rgba(20,108,67,.08);
+    border-radius:var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    padding:20px;
+}
+.loader{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(243,247,244,.52);
+    backdrop-filter: blur(3px);
+    z-index:9999;
+}
+.loader .spinner-wrap{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:#fff;
+    border-radius:18px;
+    padding:18px 22px;
+    box-shadow: var(--shadow-soft);
+}
+::-webkit-scrollbar{ width:10px; height:10px; }
+::-webkit-scrollbar-thumb{ background:rgba(20,108,67,.25); border-radius:999px; }
+
+@media (max-width: 991.98px){
+    .sidebar{
+        transform:translateX(calc(-1 * var(--sidebar-width)));
+    }
+    .sidebar.mobile-open{
+        transform:translateX(0);
+    }
+    .main-shell{
+        margin-left:0 !important;
+    }
+    .topbar{
+        padding-left:78px;
+        padding-right:18px;
+    }
+    .topbar-title h1{
+        font-size:1.2rem;
+    }
+    .topbar-chip{
+        display:none;
+    }
+    .content-wrap{
+        padding:18px;
+    }
+}
+
+@media (max-width: 575.98px){
+    .topbar{
+        height:auto;
+        min-height:var(--topbar-height);
+        align-items:flex-start;
+        flex-direction:column;
+        gap:10px;
+        padding-top:16px;
+        padding-bottom:14px;
+    }
+    .content-wrap{
+        padding:14px;
+    }
 }
 </style>
 </head>
-<body class="bg-light">
+<body>
 
-<button class="btn btn-sm btn-success sidebar-toggle" onclick="toggleSidebar()">☰</button>
+<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
 
-<div class="sidebar" id="sidebar">
-    <h4 class="text-center text-white">KodA AI</h4>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-badge">🟢</div>
+        <div class="brand-text">
+            <h4>KodA AI</h4>
+            <span>Document Intelligence Hub</span>
+        </div>
+    </div>
 
-    <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">
-        🏠 Home
+    <a href="{{ url_for('index') }}" class="sidebar-home {% if request.path == '/' %}active{% endif %}">
+        <span class="menu-emoji">🏠</span>
+        <span>Home</span>
     </a>
 
-    <hr class="bg-light my-2">
+    <div class="sidebar-section-label">Operations</div>
 
     <div class="accordion accordion-flush" id="sidebarAccordion">
 
-        <!-- Empty Page Operations -->
-        <div class="accordion-item bg-transparent border-0">
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path not in ['/trainemptymodel', '/detectemptypage'] %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#modelOps"
-                    aria-expanded="{% if request.path in ['/trainemptymodel', '/detectemptypage'] %}true{% else %}false{% endif %}">
-                    ⚙️ Empty Page Operations
+                <button class="accordion-button {% if request.path not in ['/trainemptymodel', '/detectemptypage'] %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#modelOps" aria-expanded="{% if request.path in ['/trainemptymodel', '/detectemptypage'] %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">⚙️</span><span>Empty Page Operations</span>
                 </button>
             </h2>
-            <div
-                id="modelOps"
-                class="accordion-collapse collapse {% if request.path in ['/trainemptymodel', '/detectemptypage'] %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('train_page') }}" class="{% if request.path == '/trainemptymodel' %}active{% endif %}">⚙️ Train Empty Page Model</a>
-                    <a href="{{ url_for('detect_empty_page') }}" class="{% if request.path == '/detectemptypage' %}active{% endif %}">🔍 Detect Empty Page</a>
+            <div id="modelOps" class="accordion-collapse collapse {% if request.path in ['/trainemptymodel', '/detectemptypage'] %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('train_page') }}" class="menu-link {% if request.path == '/trainemptymodel' %}active{% endif %}"><span class="menu-emoji">⚙️</span><span>Train Empty Page Model</span></a>
+                    <a href="{{ url_for('detect_empty_page') }}" class="menu-link {% if request.path == '/detectemptypage' %}active{% endif %}"><span class="menu-emoji">🔍</span><span>Detect Empty Page</span></a>
                 </div>
             </div>
         </div>
 
-        <!-- OCR Operations -->
-        <div class="accordion-item bg-transparent border-0">
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path not in ['/ocr', '/ocrtifimagewithdetails'] %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#ocrOps"
-                    aria-expanded="{% if request.path in ['/ocr', '/ocrtifimagewithdetails'] %}true{% else %}false{% endif %}">
-                    📄 OCR Operations
+                <button class="accordion-button {% if request.path not in ['/ocr', '/ocrtifimagewithdetails'] %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#ocrOps" aria-expanded="{% if request.path in ['/ocr', '/ocrtifimagewithdetails'] %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">📄</span><span>OCR Operations</span>
                 </button>
             </h2>
-            <div
-                id="ocrOps"
-                class="accordion-collapse collapse {% if request.path in ['/ocr', '/ocrtifimagewithdetails'] %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('ocr_page') }}" class="{% if request.path == '/ocr' %}active{% endif %}">📄 OCR TIF Image</a>
-                    <a href="{{ url_for('ocr_tif_image_with_details_page') }}" class="{% if request.path == '/ocrtifimagewithdetails' %}active{% endif %}">🧩 OCR TIF Image (With Details)</a>
+            <div id="ocrOps" class="accordion-collapse collapse {% if request.path in ['/ocr', '/ocrtifimagewithdetails'] %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('ocr_page') }}" class="menu-link {% if request.path == '/ocr' %}active{% endif %}"><span class="menu-emoji">📄</span><span>OCR TIF Image</span></a>
+                    <a href="{{ url_for('ocr_tif_image_with_details_page') }}" class="menu-link {% if request.path == '/ocrtifimagewithdetails' %}active{% endif %}"><span class="menu-emoji">🧩</span><span>OCR TIF Image (With Details)</span></a>
                 </div>
             </div>
         </div>
 
-        <!-- Classification Operations -->
-        <div class="accordion-item bg-transparent border-0">
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path not in ['/classifications', '/trainclassification', '/getclassification'] %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#classificationOps"
-                    aria-expanded="{% if request.path in ['/classifications', '/trainclassification', '/getclassification'] %}true{% else %}false{% endif %}">
-                    🏷️ Classification Operations
+                <button class="accordion-button {% if request.path not in ['/classifications', '/trainclassification', '/getclassification'] %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#classificationOps" aria-expanded="{% if request.path in ['/classifications', '/trainclassification', '/getclassification'] %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">🏷️</span><span>Classification Operations</span>
                 </button>
             </h2>
-            <div
-                id="classificationOps"
-                class="accordion-collapse collapse {% if request.path in ['/classifications', '/trainclassification', '/getclassification'] %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('classifications_page') }}" class="{% if request.path == '/classifications' %}active{% endif %}">📋 Classifications</a>
-                    <a href="{{ url_for('train_classification_page') }}" class="{% if request.path == '/trainclassification' %}active{% endif %}">🧪 Train Classification</a>
-                    <a href="{{ url_for('get_classification_page') }}" class="{% if request.path == '/getclassification' %}active{% endif %}">🧾 Get Classification</a>
+            <div id="classificationOps" class="accordion-collapse collapse {% if request.path in ['/classifications', '/trainclassification', '/getclassification'] %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('classifications_page') }}" class="menu-link {% if request.path == '/classifications' %}active{% endif %}"><span class="menu-emoji">📋</span><span>Classifications</span></a>
+                    <a href="{{ url_for('train_classification_page') }}" class="menu-link {% if request.path == '/trainclassification' %}active{% endif %}"><span class="menu-emoji">🧪</span><span>Train Classification</span></a>
+                    <a href="{{ url_for('get_classification_page') }}" class="menu-link {% if request.path == '/getclassification' %}active{% endif %}"><span class="menu-emoji">🧾</span><span>Get Classification</span></a>
                 </div>
             </div>
         </div>
-        <!-- Check Data Exists Operations -->
-        <div class="accordion-item bg-transparent border-0">
+
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/checkdataexists' %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#checkDataOps"
-                    aria-expanded="{% if request.path == '/checkdataexists' %}true{% else %}false{% endif %}">
-                    ✅ Check Data Exists Operations
+                <button class="accordion-button {% if request.path != '/checkdataexists' %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#checkDataOps" aria-expanded="{% if request.path == '/checkdataexists' %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">✅</span><span>Check Data Exists Operations</span>
                 </button>
             </h2>
-            <div
-                id="checkDataOps"
-                class="accordion-collapse collapse {% if request.path == '/checkdataexists' %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('check_data_exists_page') }}" class="{% if request.path == '/checkdataexists' %}active{% endif %}">✅ Check Data Exists</a>
+            <div id="checkDataOps" class="accordion-collapse collapse {% if request.path == '/checkdataexists' %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('check_data_exists_page') }}" class="menu-link {% if request.path == '/checkdataexists' %}active{% endif %}"><span class="menu-emoji">✅</span><span>Check Data Exists</span></a>
                 </div>
             </div>
         </div>
-        <!-- BERT Classification Operations -->
-        <div class="accordion-item bg-transparent border-0">
+
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/bertclassificationtrain' %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#bertOps"
-                    aria-expanded="{% if request.path == '/bertclassificationtrain' %}true{% else %}false{% endif %}">
-                    🤖 BERT Classification Operations
+                <button class="accordion-button {% if request.path not in ['/bertclassificationtrain','/bertclassificationdetect'] %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#bertOps" aria-expanded="{% if request.path in ['/bertclassificationtrain','/bertclassificationdetect'] %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">🤖</span><span>BERT Classification Operations</span>
                 </button>
             </h2>
-            <div
-                id="bertOps"
-                class="accordion-collapse collapse {% if request.path == '/bertclassificationtrain' %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('bert_classification_train_page') }}" class="{% if request.path == '/bertclassificationtrain' %}active{% endif %}">🎯 Train BERT Classification</a>
-                    <a href="{{ url_for('bert_classification_detect_page') }}" class="{% if request.path == '/bertclassificationdetect' %}active{% endif %}">🔍 Detect BERT Classification</a>
+            <div id="bertOps" class="accordion-collapse collapse {% if request.path in ['/bertclassificationtrain','/bertclassificationdetect'] %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('bert_classification_train_page') }}" class="menu-link {% if request.path == '/bertclassificationtrain' %}active{% endif %}"><span class="menu-emoji">🎯</span><span>Train BERT Classification</span></a>
+                    <a href="{{ url_for('bert_classification_detect_page') }}" class="menu-link {% if request.path == '/bertclassificationdetect' %}active{% endif %}"><span class="menu-emoji">🔍</span><span>Detect BERT Classification</span></a>
                 </div>
             </div>
         </div>
-        <!-- Audio Operations -->
-        <div class="accordion-item bg-transparent border-0">
+
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/audiotranscription' %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#audioOps"
-                    aria-expanded="{% if request.path == '/audiotranscription' %}true{% else %}false{% endif %}">
-                    🎤 Audio Operations
+                <button class="accordion-button {% if request.path != '/audiotranscription' %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#audioOps" aria-expanded="{% if request.path == '/audiotranscription' %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">🎤</span><span>Audio Operations</span>
                 </button>
             </h2>
-            <div
-                id="audioOps"
-                class="accordion-collapse collapse {% if request.path == '/audiotranscription' %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('audio_transcription_page') }}" class="{% if request.path == '/audiotranscription' %}active{% endif %}">📝 Transcribe Audio</a>
+            <div id="audioOps" class="accordion-collapse collapse {% if request.path == '/audiotranscription' %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('audio_transcription_page') }}" class="menu-link {% if request.path == '/audiotranscription' %}active{% endif %}"><span class="menu-emoji">📝</span><span>Transcribe Audio</span></a>
                 </div>
             </div>
         </div>
-        <!-- LLaMA Operations -->
-        <div class="accordion-item bg-transparent border-0">
+
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/llamaquestionanswer' %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#llamaOps"
-                    aria-expanded="{% if request.path == '/llamaquestionanswer' %}true{% else %}false{% endif %}">
-                    🦙 LLaMA Operations
+                <button class="accordion-button {% if request.path != '/llamaquestionanswer' %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#llamaOps" aria-expanded="{% if request.path == '/llamaquestionanswer' %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">🦙</span><span>LLaMA Operations</span>
                 </button>
             </h2>
-            <div
-                id="llamaOps"
-                class="accordion-collapse collapse {% if request.path == '/llamaquestionanswer' %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('llama_question_answer_page') }}" class="{% if request.path == '/llamaquestionanswer' %}active{% endif %}">❓ Question Answer</a>
+            <div id="llamaOps" class="accordion-collapse collapse {% if request.path == '/llamaquestionanswer' %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('llama_question_answer_page') }}" class="menu-link {% if request.path == '/llamaquestionanswer' %}active{% endif %}"><span class="menu-emoji">❓</span><span>Question Answer</span></a>
                 </div>
             </div>
         </div>
-        <!-- Barcode Operations -->
-        <div class="accordion-item bg-transparent border-0">
+
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path not in ['/barcodedetect', '/trainbarcodedetectmodel'] %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#barcodeOps"
-                    aria-expanded="{% if request.path in ['/barcodedetect', '/trainbarcodedetectmodel'] %}true{% else %}false{% endif %}">
-                    🧾 Barcode Operations
+                <button class="accordion-button {% if request.path not in ['/barcodedetect', '/trainbarcodedetectmodel'] %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#barcodeOps" aria-expanded="{% if request.path in ['/barcodedetect', '/trainbarcodedetectmodel'] %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">🧾</span><span>Barcode Operations</span>
                 </button>
             </h2>
-            <div
-                id="barcodeOps"
-                class="accordion-collapse collapse {% if request.path in ['/barcodedetect', '/trainbarcodedetectmodel'] %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('barcode_detect_page') }}" class="{% if request.path == '/barcodedetect' %}active{% endif %}">📷 Detect Barcode</a>
-                    <a href="{{ url_for('train_barcode_detect_model_page') }}" class="{% if request.path == '/trainbarcodedetectmodel' %}active{% endif %}">⚙️ Train Barcode Model</a>
+            <div id="barcodeOps" class="accordion-collapse collapse {% if request.path in ['/barcodedetect', '/trainbarcodedetectmodel'] %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('barcode_detect_page') }}" class="menu-link {% if request.path == '/barcodedetect' %}active{% endif %}"><span class="menu-emoji">📷</span><span>Detect Barcode</span></a>
+                    <a href="{{ url_for('train_barcode_detect_model_page') }}" class="menu-link {% if request.path == '/trainbarcodedetectmodel' %}active{% endif %}"><span class="menu-emoji">⚙️</span><span>Train Barcode Model</span></a>
                 </div>
             </div>
         </div>
-        <!-- Qwen Operations -->
-        <div class="accordion-item bg-transparent border-0">
+
+        <div class="accordion-item">
             <h2 class="accordion-header">
-                <button
-                    class="accordion-button bg-success text-white px-3 py-2 {% if request.path != '/qwenquestionanswer' %}collapsed{% endif %}"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#qwenOps"
-                    aria-expanded="{% if request.path == '/qwenquestionanswer' %}true{% else %}false{% endif %}">
-                    🧠 Qwen Operations
+                <button class="accordion-button {% if request.path != '/qwenquestionanswer' %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#qwenOps" aria-expanded="{% if request.path == '/qwenquestionanswer' %}true{% else %}false{% endif %}">
+                    <span class="menu-emoji">🧠</span><span>Qwen Operations</span>
                 </button>
             </h2>
-            <div
-                id="qwenOps"
-                class="accordion-collapse collapse {% if request.path == '/qwenquestionanswer' %}show{% endif %}"
-                data-bs-parent="#sidebarAccordion">
-                <div class="accordion-body p-0">
-                    <a href="{{ url_for('qwen_question_answer_page') }}" class="{% if request.path == '/qwenquestionanswer' %}active{% endif %}">
-                        🤖 Qwen Question Answer
-                    </a>
+            <div id="qwenOps" class="accordion-collapse collapse {% if request.path == '/qwenquestionanswer' %}show{% endif %}" data-bs-parent="#sidebarAccordion">
+                <div class="accordion-body">
+                    <a href="{{ url_for('qwen_question_answer_page') }}" class="menu-link {% if request.path == '/qwenquestionanswer' %}active{% endif %}"><span class="menu-emoji">🤖</span><span>Qwen Question Answer</span></a>
                 </div>
             </div>
         </div>
+
     </div>
+</aside>
+
+<div class="main-shell" id="mainShell">
+    <header class="topbar">
+        <div class="topbar-title">
+            <h1>{% block page_title %}KodA AI Workspace{% endblock %}</h1>
+            <p>{% block page_subtitle %}Document processing, OCR, classification and model tools in one place.{% endblock %}</p>
+        </div>
+        <div class="topbar-chip">🟢 System Ready</div>
+    </header>
+
+    <main class="content-wrap">
+        {% block content %}{% endblock %}
+    </main>
 </div>
 
-<div class="main-content" id="mainContent">
-    {% block content %}{% endblock %}
-</div>
-
-<div class="loader">
-    <div class="spinner-border text-success" role="status">
-        <span class="visually-hidden">Loading...</span>
+<div class="loader" id="loader">
+    <div class="spinner-wrap">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
 </div>
 
 <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
 <script>
 function showLoader() {
-    document.querySelector('.loader').style.display = 'block';
+    document.getElementById('loader').style.display = 'block';
 }
 function hideLoader() {
-    document.querySelector('.loader').style.display = 'none';
+    document.getElementById('loader').style.display = 'none';
 }
 
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
-    sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('full');
+    const shell = document.getElementById('mainShell');
+
+    if (window.innerWidth <= 991.98) {
+        sidebar.classList.toggle('mobile-open');
+    } else {
+        sidebar.classList.toggle('collapsed');
+        shell.classList.toggle('full');
+    }
 }
+
+document.addEventListener('click', function(e) {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.querySelector('.sidebar-toggle');
+    if (window.innerWidth <= 991.98 && sidebar.classList.contains('mobile-open')) {
+        if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+            sidebar.classList.remove('mobile-open');
+        }
+    }
+});
 </script>
 
 {% block scripts %}{% endblock %}

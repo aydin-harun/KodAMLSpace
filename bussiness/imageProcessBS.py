@@ -19,6 +19,9 @@ from libs.barcodeDetect.BarcodePresenceClassifier import BarcodePresenceClassifi
 from libs.emptyPageDetect.CnnEmptyPageDetectHelper import CnnEmptyPageDetector
 from libs.qwenLibs.QWenHelper import QWenHelper
 import json
+from datetime import datetime
+
+
 
 # os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 # os.environ["PATH"] += os.pathsep + r"C:\ffmpeg\bin"
@@ -40,6 +43,7 @@ brcPresenceClassifier : BarcodePresenceClassifier = None
 emptyPageClassifier : emptyPageDetectHelperV2.EmptyPageClassifier = None
 emptyPageClassifierCNN : CnnEmptyPageDetector = None
 qwenHlp : QWenHelper = None
+serviceDashboardJson = {}
 
 #region initialize
 def loadAppConfig():
@@ -52,115 +56,272 @@ def loadAppConfig():
         print(f"🛑🛑🛑Hata : {str(e)}")
         raise
 
+# def loadModels():
+#     global appConfig, eOcrEngine, bertDocClassifier, emptyPageModelCount, gensimModelCount, \
+#         bertModelCount, llama3BInstructHlp, whisperTranscriber, \
+#         barcodeDetectModelPath, barcodeDetectModelCount, brcPresenceClassifier, \
+#         emptyPageClassifier, emptyPageClassifierCNN,\
+#         qwenHlp
+#     try:
+#         if appConfig.useEmptyPageOperation:
+#             rows = getEmptyPageModels()
+#             for row in rows:
+#                 if row[3] == emptyPageDetectHelperV2.ModelType.rf.value:
+#                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.rfModelPath)
+#                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.rfModelPath))
+#                     fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.rfModelPath),
+#                                          os.path.basename(appConfig.emptyPageModelConfig.rfModelPath), row[1])
+#                 elif row[3] == emptyPageDetectHelperV2.ModelType.xgb.value:
+#                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.xgbModelPath)
+#                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.xgbModelPath))
+#                     fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.xgbModelPath),
+#                                          os.path.basename(appConfig.emptyPageModelConfig.xgbModelPath), row[1])
+#                 elif row[3] == emptyPageDetectHelperV2.ModelType.lgbm.value:
+#                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.lgbmModelPath)
+#                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.lgbmModelPath))
+#                     fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.lgbmModelPath),
+#                                          os.path.basename(appConfig.emptyPageModelConfig.lgbmModelPath), row[1])
+#                 elif row[3] == emptyPageDetectHelperV2.ModelType.catboost.value:
+#                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.catboostModelPath)
+#                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath))
+#                     fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath),
+#                                          os.path.basename(appConfig.emptyPageModelConfig.catboostModelPath), row[1])
+#                 elif row[3] == emptyPageDetectHelperV2.ModelType.cnn.value:
+#                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.cnnModelPath)
+#                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.cnnModelPath))
+#                     fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.cnnModelPath),
+#                                          os.path.basename(appConfig.emptyPageModelConfig.cnnModelPath), row[1])
+#                 emptyPageModelCount = emptyPageModelCount + 1
+#             emptyPageClassifier = emptyPageDetectHelperV2.EmptyPageClassifier(appConfig.emptyPageModelConfig)
+#             if appConfig.emptyPageModelConfig.isCNNModelUsing:
+#                 emptyPageClassifierCNN = CnnEmptyPageDetector(appConfig.emptyPageModelConfig)
+#             print("✅✅ Emty Page Detect Model(ler) Yüklendi. Model Sayısı:"+str(emptyPageModelCount))
+#         if appConfig.useEasyOcrOperation:
+#             eOcrEngine = easyOcrEngine.EasyOcrEngine(appConfig.ocrModelDir)
+#             print("✅✅ Ocr Model Yüklendi")
+#         if appConfig.useGensimModelOperation:
+#             classificatinDatas = getClassificationTypes(0, True)
+#             classificatinModel = []
+#             for classificatinData in classificatinDatas.get("Data"):
+#                 t = type(classificatinData)
+#                 fileHelper.createDirIfExists(appConfig.gensimModelDir)
+#                 modelFilePath = os.path.join(appConfig.gensimModelDir,f"{classificatinData['ClassificationTypeName']}.model" )
+#                 fileHelper.delFileIfExists(modelFilePath)
+#                 fileHelper.writeFile(appConfig.gensimModelDir,
+#                                      os.path.basename(modelFilePath),classificatinData["ModelData"])
+#                 classificatinModel.append([classificatinData["ClassificationTypeName"], modelFilePath])
+#                 gensimModelCount = gensimModelCount + 1
+#             go.loadModels(classificatinModel)
+#             print("✅✅ Classificaiton Model(ler) Yüklendi- Gensim")
+#         if appConfig.useBertModelOperation:
+#             bertClassificatinData = getBertClassificationModel()
+#             if len(bertClassificatinData)>0:
+#                 fileHelper.delFileIfExists(appConfig.bertModelPath)
+#                 fileHelper.createDirIfExists(os.path.dirname(appConfig.bertModelPath))
+#                 fileHelper.writeFile(os.path.dirname(appConfig.bertModelPath),
+#                                      os.path.basename(appConfig.bertModelPath), bertClassificatinData[0][1])
+#                 bertModelCount = bertModelCount + 1
+#             bertDocClassifier = BertDocumentClassifier(appConfig.bertModelPath, appConfig.bertModelDir)
+#             if bertModelCount> 0:
+#                 bertDocClassifier.load_model()
+#             print("✅✅ Classificaiton Model(ler) Yüklendi- Bert")
+#
+#         if appConfig.useLlama:
+#             llama3BInstructHlp = LlamaInstructHelper(appConfig.llamaModelPath, appConfig.debugMode, appConfig.llamaModelType)
+#             print("✅✅ llama 3B Vision Model Yüklendi- Llama")
+#         if appConfig.useWhisperTranscribeOperation:
+#             whisperTranscriber = WhisperTranscriber(appConfig.whisperTranscribeModelPath,"cpu", dtype=torch.float32)
+#             print("✅✅ Whisper-Base Model Yüklendi- OpenAI")
+#         if appConfig.useBarcodeDetectOperation:
+#             rows = getBarcodeDetectModel()
+#             brcPresenceClassifier = BarcodePresenceClassifier(model_path=appConfig.barcodeDetectModelPath, img_size=(128, 128),
+#                 threshold=0.5,
+#                 deskew=True,
+#                 verbose=True)
+#             if len(rows)>0:
+#                 fileHelper.delFileIfExists(appConfig.barcodeDetectModelPath)
+#                 fileHelper.createDirIfExists(os.path.dirname(appConfig.barcodeDetectModelPath))
+#                 fileHelper.writeFile(os.path.dirname(appConfig.barcodeDetectModelPath),
+#                                      os.path.basename(appConfig.barcodeDetectModelPath), rows[0][1])
+#                 barcodeDetectModelCount = barcodeDetectModelCount + 1
+#                 brcPresenceClassifier.load_model(appConfig.barcodeDetectModelPath)
+#             print("✅✅ Barcode Detect Model Yüklendi")
+#
+#         print("🧙‍♂️🧙‍♂️ KodA AI Space Servis Yüklenmesi Tamamlandı...👍👍")
+#         print("Kullanılabilir Modüller ->")
+#         if appConfig.useRapifFuzzOperation:
+#             print("---> Rapid Fuzz, Veri Doğrulama")
+#         if appConfig.useGensimModelOperation:
+#             print("---> Gensim Doküman Sınıflandırma, Veri Doğrulama")
+#         if appConfig.useEasyOcrOperation:
+#             print("---> EasyOcr, Doküman Ocrlama ")
+#         if appConfig.useBertModelOperation:
+#             print("---> Bert, Doküman Sınıflandırma ")
+#         if appConfig.useEmptyPageOperation:
+#             print("---> Sklearn, Boş Sayfa Tespiti ")
+#         if appConfig.useLlama:
+#             print("---> llama 3B Instruct, Veri Doğrulama - Soru -> Cevap")
+#         if appConfig.useWhisperTranscribeOperation:
+#             print("---> Whisper-Base, Transcript - Ses -> Metin")
+#         if appConfig.useBertModelOperation:
+#             print("---> Sklearn, Barkod Tespiti")
+#
+#         if appConfig.useQWen:
+#             qwenHlp = QWenHelper(
+#                 model_path=appConfig.qwenModelPath,
+#                 debug_mode=appConfig.debugMode,
+#                 cuda_device="cuda:0",
+#                 max_new_tokens=64,
+#                 do_sample=False,
+#                 require_gpu=True
+#             )
+#             print("✅✅ QWen Model Yüklendi- Llama")
+#     except Exception as e:
+#         raise e
+
 def loadModels():
     global appConfig, eOcrEngine, bertDocClassifier, emptyPageModelCount, gensimModelCount, \
         bertModelCount, llama3BInstructHlp, whisperTranscriber, \
         barcodeDetectModelPath, barcodeDetectModelCount, brcPresenceClassifier, \
-        emptyPageClassifier, emptyPageClassifierCNN,\
-        qwenHlp
+        emptyPageClassifier, emptyPageClassifierCNN, \
+        qwenHlp, serviceDashboardJson
+
+    emptyPageRows = []
+    classificatinDatas = {"Data": []}
+
     try:
+        emptyPageModelCount = 0
+        gensimModelCount = 0
+        bertModelCount = 0
+        barcodeDetectModelCount = 0
+
         if appConfig.useEmptyPageOperation:
             rows = getEmptyPageModels()
+            emptyPageRows = rows
+
             for row in rows:
                 if row[3] == emptyPageDetectHelperV2.ModelType.rf.value:
                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.rfModelPath)
                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.rfModelPath))
-                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.rfModelPath),
-                                         os.path.basename(appConfig.emptyPageModelConfig.rfModelPath), row[1])
+                    fileHelper.writeFile(
+                        os.path.dirname(appConfig.emptyPageModelConfig.rfModelPath),
+                        os.path.basename(appConfig.emptyPageModelConfig.rfModelPath),
+                        row[1]
+                    )
                 elif row[3] == emptyPageDetectHelperV2.ModelType.xgb.value:
                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.xgbModelPath)
                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.xgbModelPath))
-                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.xgbModelPath),
-                                         os.path.basename(appConfig.emptyPageModelConfig.xgbModelPath), row[1])
+                    fileHelper.writeFile(
+                        os.path.dirname(appConfig.emptyPageModelConfig.xgbModelPath),
+                        os.path.basename(appConfig.emptyPageModelConfig.xgbModelPath),
+                        row[1]
+                    )
                 elif row[3] == emptyPageDetectHelperV2.ModelType.lgbm.value:
                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.lgbmModelPath)
                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.lgbmModelPath))
-                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.lgbmModelPath),
-                                         os.path.basename(appConfig.emptyPageModelConfig.lgbmModelPath), row[1])
+                    fileHelper.writeFile(
+                        os.path.dirname(appConfig.emptyPageModelConfig.lgbmModelPath),
+                        os.path.basename(appConfig.emptyPageModelConfig.lgbmModelPath),
+                        row[1]
+                    )
                 elif row[3] == emptyPageDetectHelperV2.ModelType.catboost.value:
                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.catboostModelPath)
                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath))
-                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath),
-                                         os.path.basename(appConfig.emptyPageModelConfig.catboostModelPath), row[1])
+                    fileHelper.writeFile(
+                        os.path.dirname(appConfig.emptyPageModelConfig.catboostModelPath),
+                        os.path.basename(appConfig.emptyPageModelConfig.catboostModelPath),
+                        row[1]
+                    )
                 elif row[3] == emptyPageDetectHelperV2.ModelType.cnn.value:
                     fileHelper.delFileIfExists(appConfig.emptyPageModelConfig.cnnModelPath)
                     fileHelper.createDirIfExists(os.path.dirname(appConfig.emptyPageModelConfig.cnnModelPath))
-                    fileHelper.writeFile(os.path.dirname(appConfig.emptyPageModelConfig.cnnModelPath),
-                                         os.path.basename(appConfig.emptyPageModelConfig.cnnModelPath), row[1])
-                emptyPageModelCount = emptyPageModelCount + 1
+                    fileHelper.writeFile(
+                        os.path.dirname(appConfig.emptyPageModelConfig.cnnModelPath),
+                        os.path.basename(appConfig.emptyPageModelConfig.cnnModelPath),
+                        row[1]
+                    )
+
+                emptyPageModelCount += 1
+
             emptyPageClassifier = emptyPageDetectHelperV2.EmptyPageClassifier(appConfig.emptyPageModelConfig)
             if appConfig.emptyPageModelConfig.isCNNModelUsing:
                 emptyPageClassifierCNN = CnnEmptyPageDetector(appConfig.emptyPageModelConfig)
-            print("✅✅ Emty Page Detect Model(ler) Yüklendi. Model Sayısı:"+str(emptyPageModelCount))
+
         if appConfig.useEasyOcrOperation:
             eOcrEngine = easyOcrEngine.EasyOcrEngine(appConfig.ocrModelDir)
-            print("✅✅ Ocr Model Yüklendi")
+
         if appConfig.useGensimModelOperation:
             classificatinDatas = getClassificationTypes(0, True)
             classificatinModel = []
+
             for classificatinData in classificatinDatas.get("Data"):
-                t = type(classificatinData)
                 fileHelper.createDirIfExists(appConfig.gensimModelDir)
-                modelFilePath = os.path.join(appConfig.gensimModelDir,f"{classificatinData['ClassificationTypeName']}.model" )
+                modelFilePath = os.path.join(
+                    appConfig.gensimModelDir,
+                    f"{classificatinData['ClassificationTypeName']}.model"
+                )
                 fileHelper.delFileIfExists(modelFilePath)
-                fileHelper.writeFile(appConfig.gensimModelDir,
-                                     os.path.basename(modelFilePath),classificatinData["ModelData"])
+                fileHelper.writeFile(
+                    appConfig.gensimModelDir,
+                    os.path.basename(modelFilePath),
+                    classificatinData["ModelData"]
+                )
                 classificatinModel.append([classificatinData["ClassificationTypeName"], modelFilePath])
-                gensimModelCount = gensimModelCount + 1
+                gensimModelCount += 1
+
             go.loadModels(classificatinModel)
-            print("✅✅ Classificaiton Model(ler) Yüklendi- Gensim")
+
         if appConfig.useBertModelOperation:
             bertClassificatinData = getBertClassificationModel()
-            if len(bertClassificatinData)>0:
+            if len(bertClassificatinData) > 0:
                 fileHelper.delFileIfExists(appConfig.bertModelPath)
                 fileHelper.createDirIfExists(os.path.dirname(appConfig.bertModelPath))
-                fileHelper.writeFile(os.path.dirname(appConfig.bertModelPath),
-                                     os.path.basename(appConfig.bertModelPath), bertClassificatinData[0][1])
-                bertModelCount = bertModelCount + 1
+                fileHelper.writeFile(
+                    os.path.dirname(appConfig.bertModelPath),
+                    os.path.basename(appConfig.bertModelPath),
+                    bertClassificatinData[0][1]
+                )
+                bertModelCount += 1
+
             bertDocClassifier = BertDocumentClassifier(appConfig.bertModelPath, appConfig.bertModelDir)
-            if bertModelCount> 0:
+            if bertModelCount > 0:
                 bertDocClassifier.load_model()
-            print("✅✅ Classificaiton Model(ler) Yüklendi- Bert")
 
         if appConfig.useLlama:
-            llama3BInstructHlp = LlamaInstructHelper(appConfig.llamaModelPath, appConfig.debugMode, appConfig.llamaModelType)
-            print("✅✅ llama 3B Vision Model Yüklendi- Llama")
+            llama3BInstructHlp = LlamaInstructHelper(
+                appConfig.llamaModelPath,
+                appConfig.debugMode,
+                appConfig.llamaModelType
+            )
+
         if appConfig.useWhisperTranscribeOperation:
-            whisperTranscriber = WhisperTranscriber(appConfig.whisperTranscribeModelPath,"cpu", dtype=torch.float32)
-            print("✅✅ Whisper-Base Model Yüklendi- OpenAI")
+            whisperTranscriber = WhisperTranscriber(
+                appConfig.whisperTranscribeModelPath,
+                "cpu",
+                dtype=torch.float32
+            )
+
         if appConfig.useBarcodeDetectOperation:
             rows = getBarcodeDetectModel()
-            brcPresenceClassifier = BarcodePresenceClassifier(model_path=appConfig.barcodeDetectModelPath, img_size=(128, 128),
+
+            brcPresenceClassifier = BarcodePresenceClassifier(
+                model_path=appConfig.barcodeDetectModelPath,
+                img_size=(128, 128),
                 threshold=0.5,
                 deskew=True,
-                verbose=True)
-            if len(rows)>0:
+                verbose=True
+            )
+
+            if len(rows) > 0:
                 fileHelper.delFileIfExists(appConfig.barcodeDetectModelPath)
                 fileHelper.createDirIfExists(os.path.dirname(appConfig.barcodeDetectModelPath))
-                fileHelper.writeFile(os.path.dirname(appConfig.barcodeDetectModelPath),
-                                     os.path.basename(appConfig.barcodeDetectModelPath), rows[0][1])
-                barcodeDetectModelCount = barcodeDetectModelCount + 1
+                fileHelper.writeFile(
+                    os.path.dirname(appConfig.barcodeDetectModelPath),
+                    os.path.basename(appConfig.barcodeDetectModelPath),
+                    rows[0][1]
+                )
+                barcodeDetectModelCount += 1
                 brcPresenceClassifier.load_model(appConfig.barcodeDetectModelPath)
-            print("✅✅ Barcode Detect Model Yüklendi")
-
-        print("🧙‍♂️🧙‍♂️ KodA AI Space Servis Yüklenmesi Tamamlandı...👍👍")
-        print("Kullanılabilir Modüller ->")
-        if appConfig.useRapifFuzzOperation:
-            print("---> Rapid Fuzz, Veri Doğrulama")
-        if appConfig.useGensimModelOperation:
-            print("---> Gensim Doküman Sınıflandırma, Veri Doğrulama")
-        if appConfig.useEasyOcrOperation:
-            print("---> EasyOcr, Doküman Ocrlama ")
-        if appConfig.useBertModelOperation:
-            print("---> Bert, Doküman Sınıflandırma ")
-        if appConfig.useEmptyPageOperation:
-            print("---> Sklearn, Boş Sayfa Tespiti ")
-        if appConfig.useLlama:
-            print("---> llama 3B Instruct, Veri Doğrulama - Soru -> Cevap")
-        if appConfig.useWhisperTranscribeOperation:
-            print("---> Whisper-Base, Transcript - Ses -> Metin")
-        if appConfig.useBertModelOperation:
-            print("---> Sklearn, Barkod Tespiti")
 
         if appConfig.useQWen:
             qwenHlp = QWenHelper(
@@ -171,9 +332,149 @@ def loadModels():
                 do_sample=False,
                 require_gpu=True
             )
-            print("✅✅ QWen Model Yüklendi- Llama")
+
+        serviceDashboardJson = buildServiceDashboardJson(
+            appConfig=appConfig,
+            empty_page_rows=emptyPageRows,
+            gensim_classification_data=classificatinDatas,
+            bert_model_count=bertModelCount,
+            empty_page_model_count=emptyPageModelCount,
+            barcode_model_count=barcodeDetectModelCount
+        )
+
     except Exception as e:
+        serviceDashboardJson = {
+            "generatedAt": datetime.now().isoformat(),
+            "summary": {
+                "enabledModuleCount": 0,
+                "loadedModelTotal": 0
+            },
+            "modules": {},
+            "error": str(e)
+        }
         raise e
+#endregion
+
+#region Dashboard
+def _safe_bool(v):
+    return bool(v)
+
+def _empty_page_model_breakdown(rows):
+    detail = {
+        "rf": 0,
+        "xgb": 0,
+        "lgbm": 0,
+        "catboost": 0,
+        "cnn": 0
+    }
+
+    for row in rows:
+        if row[3] == emptyPageDetectHelperV2.ModelType.rf.value:
+            detail["rf"] += 1
+        elif row[3] == emptyPageDetectHelperV2.ModelType.xgb.value:
+            detail["xgb"] += 1
+        elif row[3] == emptyPageDetectHelperV2.ModelType.lgbm.value:
+            detail["lgbm"] += 1
+        elif row[3] == emptyPageDetectHelperV2.ModelType.catboost.value:
+            detail["catboost"] += 1
+        elif row[3] == emptyPageDetectHelperV2.ModelType.cnn.value:
+            detail["cnn"] += 1
+
+    detail["total"] = sum(detail.values())
+    return detail
+
+
+def buildServiceDashboardJson(
+    appConfig,
+    empty_page_rows=None,
+    gensim_classification_data=None,
+    bert_model_count=0,
+    empty_page_model_count=0,
+    barcode_model_count=0
+):
+    empty_page_rows = empty_page_rows or []
+    gensim_classification_data = gensim_classification_data or {"Data": []}
+
+    empty_page_detail = _empty_page_model_breakdown(empty_page_rows)
+
+    dashboard = {
+        "generatedAt": datetime.now().isoformat(),
+        "modules": {
+            "emptyPage": {
+                "enabled": _safe_bool(appConfig.useEmptyPageOperation),
+                "loadedModelCount": int(empty_page_model_count),
+                "details": empty_page_detail,
+                "cnnActive": _safe_bool(getattr(appConfig.emptyPageModelConfig, "isCNNModelUsing", False))
+            },
+            "ocr": {
+                "enabled": _safe_bool(appConfig.useEasyOcrOperation),
+                "loadedModelCount": 1 if _safe_bool(appConfig.useEasyOcrOperation) else 0,
+                "details": {
+                    "engine": "EasyOCR"
+                }
+            },
+            "gensimClassification": {
+                "enabled": _safe_bool(appConfig.useGensimModelOperation),
+                "loadedModelCount": len(gensim_classification_data.get("Data", [])),
+                "details": {
+                    "classificationNames": [
+                        x["ClassificationTypeName"]
+                        for x in gensim_classification_data.get("Data", [])
+                    ]
+                }
+            },
+            "bertClassification": {
+                "enabled": _safe_bool(appConfig.useBertModelOperation),
+                "loadedModelCount": int(bert_model_count),
+                "details": {}
+            },
+            "llama": {
+                "enabled": _safe_bool(appConfig.useLlama),
+                "loadedModelCount": 1 if _safe_bool(appConfig.useLlama) else 0,
+                "details": {
+                    "modelPath": getattr(appConfig, "llamaModelPath", None),
+                    "modelType": getattr(appConfig, "llamaModelType", None)
+                }
+            },
+            "whisper": {
+                "enabled": _safe_bool(appConfig.useWhisperTranscribeOperation),
+                "loadedModelCount": 1 if _safe_bool(appConfig.useWhisperTranscribeOperation) else 0,
+                "details": {
+                    "modelPath": getattr(appConfig, "whisperTranscribeModelPath", None)
+                }
+            },
+            "barcode": {
+                "enabled": _safe_bool(appConfig.useBarcodeDetectOperation),
+                "loadedModelCount": int(barcode_model_count),
+                "details": {
+                    "threshold": 0.5,
+                    "imgSize": [128, 128],
+                    "deskew": True
+                }
+            },
+            "qwen": {
+                "enabled": _safe_bool(appConfig.useQWen),
+                "loadedModelCount": 1 if _safe_bool(appConfig.useQWen) else 0,
+                "details": {
+                    "modelPath": getattr(appConfig, "qwenModelPath", None),
+                    "maxNewTokens": 64,
+                    "requireGpu": True
+                }
+            }
+        }
+    }
+
+    dashboard["summary"] = {
+        "enabledModuleCount": sum(1 for x in dashboard["modules"].values() if x["enabled"]),
+        "loadedModelTotal": sum(int(x["loadedModelCount"]) for x in dashboard["modules"].values())
+    }
+
+    return dashboard
+
+
+def getServiceDashboardJson():
+    global serviceDashboardJson
+    return serviceDashboardJson
 #endregion
 
 #region classification
@@ -194,6 +495,13 @@ def getClassificationTypes(id:int, withModelData = False):
 
 def getClassificationType(id):
     rows = dataOperation.getData('''SELECT Id,ClassificationTypeName,ModelData, Deleted FROM ClassificationType WHERE Id = ?''', [id])
+    return rows
+
+def getClassificationTypeByName(classificationTypeName):
+    rows = dataOperation.getData(
+        '''SELECT Id,ClassificationTypeName,ModelData, Deleted FROM ClassificationType WHERE ClassificationTypeName = ?''',
+        [classificationTypeName]
+    )
     return rows
 
 def classificationDataToList(data, withModelData = False):
@@ -246,7 +554,7 @@ def trainClassificationData(jsonData):
         fileHelper.delFileIfExists(modelFilePath)
         model.save(modelFilePath)
         modelBytes = fileHelper.readFileAllBytes(modelFilePath)
-        dataRecord = getClassificationType(classificationName)
+        dataRecord = getClassificationTypeByName(classificationName)
         id = 0
         if len(dataRecord) > 0:
             id = dataRecord[0][0]
@@ -545,14 +853,14 @@ def detectBarcode(imageBase64_srt):
 #endregion
 
 #region qwenQuestionAnswer
-def qwenQuestionAnswer(content:str,schema:str, userPromt:str)->str:
+def qwenQuestionAnswer(content:str,schema:str, userPromt:str, question:str)->str:
     try:
         if not appConfig.useQWen:
             return {"Data": None, "ErrorMessage": "Özellik Kullanılabilir Değil", "Description": "", "Error": True}
-        _schema = None
-        if schema != None:
-            _schema = json.loads(schema)
-        result = qwenHlp.extract_fields(image_input= content, max_new_tokens=300, schema=_schema, user_prompt=userPromt)
+        if question is None or schema is None or content is None:
+            return {"Data": None, "ErrorMessage": str("Sorulacak Soru,Çıktı Şeması, Görüntü Değerleri Eksiksiz Gönderilmelidir..."), "Description": "", "Error": True}
+        _schema = json.loads(schema)
+        result = qwenHlp.extract_fields(image_input= content, max_new_tokens=300, schema=_schema, user_prompt=userPromt, question=question)
         return {"Data": result, "ErrorMessage": "", "Description": "",
                 "Error": False}
     except Exception as e:

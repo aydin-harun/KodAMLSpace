@@ -8,23 +8,26 @@
 
         <form id="qwenForm">
 
-            <!-- IMAGE INPUT -->
             <div class="mb-3">
                 <label class="form-label">Select Image</label>
-                <input type="file" class="form-control" id="imageFile" accept=".jpg,.jpeg,.png,.tif,.tiff" required>
+                <input type="file" class="form-control" id="imageFile" accept=".jpg,.jpeg,.png,.tif,.tiff,.bmp,.webp" required>
             </div>
 
-            <!-- SCHEMA -->
             <div class="mb-3">
                 <label class="form-label">Schema (JSON)</label>
-                <textarea class="form-control" id="schema" rows="5"></textarea>
+                <textarea class="form-control" id="schema" rows="6" required></textarea>
                 <button type="button" class="btn btn-sm btn-secondary mt-2" id="loadSchemaExample">Load Schema Example</button>
             </div>
 
-            <!-- PROMPT -->
+            <div class="mb-3">
+                <label class="form-label">Question</label>
+                <textarea class="form-control" id="question" rows="3" placeholder="Soruyu yazınız..." required></textarea>
+                <button type="button" class="btn btn-sm btn-secondary mt-2" id="loadQuestionExample">Load Question Example</button>
+            </div>
+
             <div class="mb-3">
                 <label class="form-label">User Prompt</label>
-                <textarea class="form-control" id="userPrompt" rows="3"></textarea>
+                <textarea class="form-control" id="userPrompt" rows="3" placeholder="Ek yönlendirme yazınız..."></textarea>
                 <button type="button" class="btn btn-sm btn-secondary mt-2" id="loadPromptExample">Load Prompt Example</button>
             </div>
 
@@ -40,8 +43,6 @@
 
 {% block scripts %}
 <script>
-
-// ===== SCHEMA EXAMPLE =====
 document.getElementById("loadSchemaExample").addEventListener("click", () => {
     document.getElementById("schema").value = JSON.stringify({
         "BelgeNo": "",
@@ -51,18 +52,20 @@ document.getElementById("loadSchemaExample").addEventListener("click", () => {
     }, null, 2);
 });
 
-// ===== PROMPT EXAMPLE =====
-document.getElementById("loadPromptExample").addEventListener("click", () => {
-    document.getElementById("userPrompt").value = "Görsel içinden verilen alanları JSON olarak çıkar.";
+document.getElementById("loadQuestionExample").addEventListener("click", () => {
+    document.getElementById("question").value = "Görseldeki belgeden belge numarası, ad soyad, doğum tarihi ve uyruğu alanlarını çıkar.";
 });
 
+document.getElementById("loadPromptExample").addEventListener("click", () => {
+    document.getElementById("userPrompt").value = "Cevabı yalnızca JSON olarak üret. Eksik alanları boş string olarak bırak.";
+});
 
-// ===== FORM SUBMIT =====
 document.getElementById("qwenForm").addEventListener("submit", function(e) {
     e.preventDefault();
 
     const fileInput = document.getElementById("imageFile");
     const schemaRaw = document.getElementById("schema").value.trim();
+    const question = document.getElementById("question").value.trim();
     const userPrompt = document.getElementById("userPrompt").value.trim();
 
     if (fileInput.files.length === 0) {
@@ -71,9 +74,15 @@ document.getElementById("qwenForm").addEventListener("submit", function(e) {
         return;
     }
 
-    if (!schemaRaw || !userPrompt) {
+    if (!schemaRaw) {
         document.getElementById("result").innerHTML =
-            `<div class="alert alert-danger">Schema and Prompt required</div>`;
+            `<div class="alert alert-danger">Schema is required</div>`;
+        return;
+    }
+
+    if (!question) {
+        document.getElementById("result").innerHTML =
+            `<div class="alert alert-danger">Question is required</div>`;
         return;
     }
 
@@ -101,7 +110,8 @@ document.getElementById("qwenForm").addEventListener("submit", function(e) {
             body: JSON.stringify({
                 content: base64Image,
                 _schema: schema,
-                userPrompt: userPrompt
+                userPrompt: userPrompt,
+                question: question
             })
         })
         .then(res => res.json())
@@ -113,7 +123,7 @@ document.getElementById("qwenForm").addEventListener("submit", function(e) {
                     `<div class="alert alert-success"><pre>${JSON.stringify(data.Data, null, 2)}</pre></div>`;
             } else {
                 document.getElementById("result").innerHTML =
-                    `<div class="alert alert-danger">${data.Description}</div>`;
+                    `<div class="alert alert-danger">${data.Description || "Error"}</div>`;
             }
         })
         .catch(err => {

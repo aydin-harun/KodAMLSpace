@@ -205,4 +205,11 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-/EasyOCRModel/model/
+/EasyOCRModel/
+/DataFolder/
+/train_pages/
+/sampleImages/
+/Meta-Llama-3.3-8B-Instruct/
+/logs/
+/mlModels/
+/DataFolder/IntelligenceData.sqlite
